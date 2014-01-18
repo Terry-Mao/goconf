@@ -1,0 +1,10 @@
+# ignore lines
+# ignore lines
+# =ignore lines
+
+# id
+id = 1
+
+# include files
+include ./examples/include/*.txt
+# include ./examples/include/*.txt

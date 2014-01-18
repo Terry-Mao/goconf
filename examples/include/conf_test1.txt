@@ -1,0 +1,6 @@
+# ignore lines
+# ignore lines
+# =ignore lines
+
+# id3
+id3 = yes
