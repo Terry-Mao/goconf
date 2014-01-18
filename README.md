@@ -3,7 +3,7 @@
 `Terry-Mao/goconf` is an configuration file parse module.
 
 ## Requeriments
-* Go 1.1 or higher
+* Go 1.2 or higher
 
 ## Installation
 
@@ -44,7 +44,7 @@ func main() {
 Read the `Terry-Mao/goconf` documentation from a terminal
 
 ```go
-$ go doc github.com/Terry-Mao/goconf
+$ godoc github.com/Terry-Mao/goconf -http=:6060
 ```
 
 Alternatively, you can [goconf](http://go.pkgdoc.org/github.com/Terry-Mao/goconf) online.
