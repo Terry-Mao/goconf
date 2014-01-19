@@ -39,6 +39,25 @@ func main() {
 }
 ```
 
+## Examples
+
+```sh
+# configuration examples
+# this is comment, goconf will ignore it.
+
+# a key-value config which key is test and value is 1
+test = 1
+
+# one mb
+test1 = 1mb
+
+# one second
+test2 = 1s
+
+# boolean
+test3 = true
+```
+
 ## Documentation
 
 Read the `Terry-Mao/goconf` documentation from a terminal
