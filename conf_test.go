@@ -75,5 +75,28 @@ func TestConf(t *testing.T) {
 		if len(conf.data) != 7 {
 			t.Errorf("parse config file \"%s\" failed, map length error", file)
 		}
+
+		conf.Add("add", "goconf")
+		if len(conf.data) != 8 {
+			t.Errorf("parse config file \"%s\" failed, map length error", file)
+		}
+
+		key = "add"
+		if add, err := conf.String(key); err != nil {
+			t.Errorf("conf.String(\"%s\") failed (%s)", key, err.Error())
+		} else {
+			if add != "goconf" {
+				t.Errorf("config key \"%s\" value not equals \"goconf\"", key)
+			}
+		}
+
+		conf.Remove("add")
+		if len(conf.data) != 7 {
+			t.Errorf("parse config file \"%s\" failed, map length error", file)
+		}
+
+        if err = conf.Save("./examples/conf_reload.txt"); err != nil {
+            t.Errorf("conf.Save() failed (%s)", err.Error())
+        }
 	}
 }

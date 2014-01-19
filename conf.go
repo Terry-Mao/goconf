@@ -171,6 +171,44 @@ func includeFiles(path string, fileMap map[string]bool) ([]string, error) {
 	return files, nil
 }
 
+// Save save current configuration to specified file, if file is "" then rewrite the original file.
+//
+// This method will ignore all the comment and include instruction if original file has.
+func (c *Config) Save(file string) error {
+	if file == "" {
+		file = c.file
+	}
+
+	f, err := os.OpenFile(file, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+	for k, v := range c.data {
+		if _, err := f.WriteString(fmt.Sprintf("%s = %s%c", k, v, crlf)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Reload reload the config file and return a new Config.
+func (c *Config) Reload() (*Config, error) {
+	return New(c.file)
+}
+
+// Add add a new key-value configuration.
+func (c *Config) Add(k, v string) {
+	c.data[k] = v
+}
+
+// Remove remove the specified key configuration.
+func (c *Config) Remove(k string) {
+	delete(c.data, k)
+}
+
 // String get config string value.
 func (c *Config) String(key string) (string, error) {
 	if v, ok := c.data[key]; ok {
