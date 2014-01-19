@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -16,6 +17,16 @@ const (
 	commet  = "#"
 	splite  = "="
 	include = "include"
+	// bytes
+	Byte = int64(1)
+	KB   = 1024 * Byte
+	MB   = 1024 * KB
+	GB   = 1024 * MB
+	// time
+	Nanosecond = int64(time.Nanosecond)
+	Second     = int64(time.Second)
+	Minute     = int64(time.Minute)
+	Hour       = int64(time.Hour)
 )
 
 var (
@@ -23,6 +34,7 @@ var (
 	ErrNotFoundKey    = errors.New("not found the config key")
 	ErrDuplicateFile  = errors.New("duplicate config file parsed")
 	ErrIncludeFile    = errors.New("include file format error")
+	ErrBooleanValue   = errors.New("boolean string error")
 
 	includeLen = len(include)
 )
@@ -117,6 +129,7 @@ func New(file string) (*Config, error) {
 	return c, nil
 }
 
+// parse config file include other files
 func includeFiles(path string, fileMap map[string]bool) ([]string, error) {
 	files := []string{}
 	// match pattern
@@ -158,7 +171,7 @@ func includeFiles(path string, fileMap map[string]bool) ([]string, error) {
 	return files, nil
 }
 
-// String get config string value
+// String get config string value.
 func (c *Config) String(key string) (string, error) {
 	if v, ok := c.data[key]; ok {
 		return v, nil
@@ -167,10 +180,124 @@ func (c *Config) String(key string) (string, error) {
 	}
 }
 
-// Int get config int value
-func (c *Config) Int(key string) (int, error) {
+// Int get config int value.
+func (c *Config) Int(key string) (int64, error) {
 	if v, ok := c.data[key]; ok {
-		return strconv.Atoi(v)
+		return strconv.ParseInt(v, 10, 64)
+	} else {
+		return 0, ErrNotFoundKey
+	}
+}
+
+// Uint get config uint value.
+func (c *Config) Uint(key string) (uint64, error) {
+	if v, ok := c.data[key]; ok {
+		return strconv.ParseUint(v, 10, 64)
+	} else {
+		return 0, ErrNotFoundKey
+	}
+}
+
+// Float get config float value.
+func (c *Config) Float(key string) (float64, error) {
+	if v, ok := c.data[key]; ok {
+		return strconv.ParseFloat(v, 64)
+	} else {
+		return 0, ErrNotFoundKey
+	}
+}
+
+// Bool get config boolean value.
+// "yes", "1", "y", "true", "enable" means true.
+// "no", "0", "n", "false", "disable" means false.
+func (c *Config) Bool(key string) (bool, error) {
+	if v, ok := c.data[key]; ok {
+		v = strings.ToLower(v)
+		if v == "true" || v == "yes" || v == "1" || v == "y" || v == "enable" {
+			return true, nil
+		} else if v == "false" || v == "no" || v == "0" || v == "n" || v == "disable" {
+			return false, nil
+		} else {
+			return false, ErrBooleanValue
+		}
+	} else {
+		return false, ErrNotFoundKey
+	}
+}
+
+// Byte get config byte number value.
+// 1kb = 1k = 1024.
+// 1mb = 1m = 1024 * 1024.
+// 1gb = 1g = 1024 * 1024 * 1024.
+func (c *Config) Byte(key string) (int64, error) {
+	if v, ok := c.data[key]; ok {
+		unit := Byte
+		subIdx := len(v)
+		if strings.HasSuffix(v, "k") {
+			unit = KB
+			subIdx = subIdx - 1
+		} else if strings.HasSuffix(v, "kb") {
+			unit = KB
+			subIdx = subIdx - 2
+		} else if strings.HasSuffix(v, "m") {
+			unit = MB
+			subIdx = subIdx - 1
+		} else if strings.HasSuffix(v, "mb") {
+			unit = MB
+			subIdx = subIdx - 2
+		} else if strings.HasSuffix(v, "g") {
+			unit = GB
+			subIdx = subIdx - 1
+		} else if strings.HasSuffix(v, "gb") {
+			unit = GB
+			subIdx = subIdx - 2
+		}
+
+		b, err := strconv.ParseInt(v[:subIdx], 10, 64)
+		if err != nil {
+			return 0, err
+		}
+
+		return b * unit, nil
+	} else {
+		return 0, ErrNotFoundKey
+	}
+}
+
+// Second get config second value.
+// 1s = 1sec = 1.
+// 1m = 1min = 60.
+// 1h = 1hour = 60 * 60.
+func (c *Config) Duration(key string) (int64, error) {
+	if v, ok := c.data[key]; ok {
+		unit := Nanosecond
+		subIdx := len(v)
+		if strings.HasSuffix(v, "s") {
+			unit = Second
+			subIdx = subIdx - 1
+		} else if strings.HasSuffix(v, "sec") {
+			unit = Second
+			subIdx = subIdx - 3
+		} else if strings.HasSuffix(v, "m") {
+			unit = Minute
+			subIdx = subIdx - 1
+		} else if strings.HasSuffix(v, "min") {
+			unit = Minute
+			subIdx = subIdx - 3
+		} else if strings.HasSuffix(v, "h") {
+			unit = Hour
+			subIdx = subIdx - 1
+		} else if strings.HasSuffix(v, "hour") {
+			unit = Hour
+			subIdx = subIdx - 4
+		}
+
+		b, err := strconv.ParseInt(v[:subIdx], 10, 64)
+		if err != nil {
+			return 0, err
+		}
+
+		return b * unit, nil
 	} else {
 		return 0, ErrNotFoundKey
 	}

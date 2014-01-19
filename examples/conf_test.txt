@@ -5,6 +5,14 @@
 # id
 id = 1
 
+f = 1.23
+
+test = false
+
+buf = 1gb
+
+sleep = 10s
+
 # include files
 include ./examples/include/*.txt
 # include ./examples/include/*.txt

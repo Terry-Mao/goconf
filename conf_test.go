@@ -36,7 +36,43 @@ func TestConf(t *testing.T) {
 			}
 		}
 
-		if len(conf.data) != 3 {
+		key = "f"
+		if f, err := conf.Float(key); err != nil {
+			t.Errorf("conf.String(\"%s\") failed (%s)", key, err.Error())
+		} else {
+			if f != 1.23 {
+				t.Errorf("config key \"%s\" value not equals 1.23", key)
+			}
+		}
+
+		key = "test"
+		if test, err := conf.Bool(key); err != nil {
+			t.Errorf("conf.Bool(\"%s\") failed (%s)", key, err.Error())
+		} else {
+			if test != false {
+				t.Errorf("config key \"%s\" value not equals false", key)
+			}
+		}
+
+		key = "buf"
+		if buf, err := conf.Byte(key); err != nil {
+			t.Errorf("conf.Byte(\"%s\") failed (%s)", key, err.Error())
+		} else {
+			if buf != 1*GB {
+				t.Errorf("config key \"%s\" value not equals %d", key, 1*GB)
+			}
+		}
+
+		key = "sleep"
+		if buf, err := conf.Duration(key); err != nil {
+			t.Errorf("conf.Duration(\"%s\") failed (%s)", key, err.Error())
+		} else {
+			if buf != 10*Second {
+				t.Errorf("config key \"%s\" value not equals %d", key, 10*Second)
+			}
+		}
+
+		if len(conf.data) != 7 {
 			t.Errorf("parse config file \"%s\" failed, map length error", file)
 		}
 	}
