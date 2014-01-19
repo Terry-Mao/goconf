@@ -208,7 +208,9 @@ func (c *Config) Float(key string) (float64, error) {
 }
 
 // Bool get config boolean value.
+//
 // "yes", "1", "y", "true", "enable" means true.
+//
 // "no", "0", "n", "false", "disable" means false.
 func (c *Config) Bool(key string) (bool, error) {
 	if v, ok := c.data[key]; ok {
@@ -226,8 +228,11 @@ func (c *Config) Bool(key string) (bool, error) {
 }
 
 // Byte get config byte number value.
+//
 // 1kb = 1k = 1024.
+//
 // 1mb = 1m = 1024 * 1024.
+//
 // 1gb = 1g = 1024 * 1024 * 1024.
 func (c *Config) Byte(key string) (int64, error) {
 	if v, ok := c.data[key]; ok {
@@ -265,8 +270,11 @@ func (c *Config) Byte(key string) (int64, error) {
 }
 
 // Second get config second value.
+//
 // 1s = 1sec = 1.
+//
 // 1m = 1min = 60.
+//
 // 1h = 1hour = 60 * 60.
 func (c *Config) Duration(key string) (int64, error) {
 	if v, ok := c.data[key]; ok {
