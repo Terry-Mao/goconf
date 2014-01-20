@@ -55,8 +55,8 @@ func TestConf(t *testing.T) {
 		}
 
 		key = "buf"
-		if buf, err := conf.Byte(key); err != nil {
-			t.Errorf("conf.Byte(\"%s\") failed (%s)", key, err.Error())
+		if buf, err := conf.MemSize(key); err != nil {
+			t.Errorf("conf.MemSize(\"%s\") failed (%s)", key, err.Error())
 		} else {
 			if buf != 1*GB {
 				t.Errorf("config key \"%s\" value not equals %d", key, 1*GB)

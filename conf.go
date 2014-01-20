@@ -272,7 +272,7 @@ func (c *Config) Bool(key string) (bool, error) {
 // 1mb = 1m = 1024 * 1024.
 //
 // 1gb = 1g = 1024 * 1024 * 1024.
-func (c *Config) Byte(key string) (int64, error) {
+func (c *Config) MemSize(key string) (int64, error) {
 	if v, ok := c.data[key]; ok {
 		unit := Byte
 		subIdx := len(v)
