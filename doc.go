@@ -1,5 +1,5 @@
 /*
-Package goconf provides configuraton read and write implementations.      
+Package goconf provides configuraton read and write implementations.
 
 Examples:
     package main

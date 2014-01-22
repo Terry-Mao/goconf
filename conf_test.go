@@ -6,7 +6,8 @@ import (
 
 func TestConf(t *testing.T) {
 	file := "./examples/conf_test.txt"
-	if conf, err := New(file); err != nil {
+	conf := New()
+	if err := conf.Parse(file); err != nil {
 		t.Errorf("New(\"%s\") failed (%s)", file, err.Error())
 	} else {
 		key := "id"
@@ -95,8 +96,8 @@ func TestConf(t *testing.T) {
 			t.Errorf("parse config file \"%s\" failed, map length error", file)
 		}
 
-        if err = conf.Save("./examples/conf_reload.txt"); err != nil {
-            t.Errorf("conf.Save() failed (%s)", err.Error())
-        }
+		if err = conf.Save("./examples/conf_reload.txt"); err != nil {
+			t.Errorf("conf.Save() failed (%s)", err.Error())
+		}
 	}
 }

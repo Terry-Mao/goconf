@@ -3,4 +3,4 @@
 # =ignore lines
 
 # id3
-id3 = yes
+id3 yes

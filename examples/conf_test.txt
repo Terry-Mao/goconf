@@ -1,17 +1,17 @@
 # ignore lines
 # ignore lines
-# =ignore lines
+# ignore lines
 
 # id
-id = 1
+id 1
 
-f = 1.23
+f 1.23
 
-test = false
+test false
 
-buf = 1gb
+buf 1gb
 
-sleep = 10s
+sleep 10s
 
 # include files
 include ./examples/include/*.txt

@@ -13,16 +13,18 @@ import (
 )
 
 const (
-	crlf    = '\n'
-	commet  = "#"
-	splite  = "="
-	include = "include"
-	// bytes
+	// formatter
+	CRLF       = '\n'
+	Commet     = "#"
+	Spliter    = " "
+	Include    = "include"
+	includeLen = len(Include)
+	// memory unit
 	Byte = int64(1)
 	KB   = 1024 * Byte
 	MB   = 1024 * KB
 	GB   = 1024 * MB
-	// time
+	// time unit
 	Nanosecond = int64(time.Nanosecond)
 	Second     = int64(time.Second)
 	Minute     = int64(time.Minute)
@@ -30,103 +32,99 @@ const (
 )
 
 var (
-	ErrNotFoundSplite = errors.New(fmt.Sprintf("not found splite:\"%s\"", splite))
-	ErrNotFoundKey    = errors.New("not found the config key")
-	ErrDuplicateFile  = errors.New("duplicate config file parsed")
-	ErrIncludeFile    = errors.New("include file format error")
-	ErrBooleanValue   = errors.New("boolean string error")
-
-	includeLen = len(include)
+	ErrNotFoundspliter = errors.New("not found spliter")
+	ErrNotFoundKey     = errors.New("not found the config key")
+	ErrDuplicateFile   = errors.New("duplicate config file parsed")
+	ErrIncludeFile     = errors.New("include file format error")
+	ErrBooleanValue    = errors.New("boolean string error")
 )
 
 // Config is the key-value configuration object.
 type Config struct {
-	data map[string]string
-	file string
+	data    map[string]string
+	file    string
+	Commet  string
+	Spliter string
 }
 
-// New return a new Config which parse the specified file.
-func New(file string) (*Config, error) {
-	c := &Config{data: map[string]string{}, file: file}
+// New return a new default Config object (commet = '#', spliter = ' ').
+func New() *Config {
+	return &Config{Commet: Commet, Spliter: Spliter}
+}
+
+// Parse parse the specified config file.
+func (c *Config) Parse(file string) error {
+	c.data = map[string]string{}
+	c.file = file
 	// open config file
 	f, err := os.Open(file)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
 	defer f.Close()
 	rd := bufio.NewReader(f)
 	files := []string{file}
 	fileMap := map[string]bool{file: true}
 	for {
-		line, err := rd.ReadString(crlf)
+		line, err := rd.ReadString(CRLF)
 		if err == io.EOF {
 			// parse file finish
 			// all files parsed, break
 			if len(files) <= 1 {
 				break
 			}
-
 			// get the next file
 			files = files[1:]
 			f, err = os.Open(files[0])
 			if err != nil {
-				return nil, err
+				return err
 			}
-
 			defer f.Close()
 			rd = bufio.NewReader(f)
 			continue
 		} else if err != nil {
-			return nil, err
+			return err
 		}
-
 		// trim space
 		line = strings.TrimSpace(line)
 		// ignore blank line
 		if line == "" {
 			continue
 		}
-
 		// ignore commet line
-		if strings.HasPrefix(line, commet) {
+		if strings.HasPrefix(line, c.Commet) {
 			continue
 		}
-
 		// handle include
-		if strings.HasPrefix(line, include) {
+		if strings.HasPrefix(line, Include) {
 			if len(line) > includeLen {
 				// add other config files
 				newFiles, err := includeFiles(strings.TrimSpace(line[includeLen+1:]), fileMap)
 				if err != nil {
-					return nil, err
+					return err
 				}
 
 				files = append(files, newFiles...)
 				continue
 			} else {
-				return nil, ErrIncludeFile
+				return ErrIncludeFile
 			}
 		}
-
 		// get the spliter index
-		idx := strings.Index(line, splite)
+		idx := strings.Index(line, c.Spliter)
 		if idx <= 0 {
-			return nil, ErrNotFoundSplite
+			return ErrNotFoundspliter
 		}
-
 		// get the key and value
 		key := strings.TrimSpace(line[:idx])
 		value := ""
 		if len(line) > idx {
 			value = strings.TrimSpace(line[idx+1:])
 		}
-
 		// store the key-value config
 		c.data[key] = value
 	}
-
-	return c, nil
+	return nil
 }
 
 // parse config file include other files
@@ -140,19 +138,16 @@ func includeFiles(path string, fileMap map[string]bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	defer dir.Close()
 	fis, err := dir.Readdir(-1)
 	if err != nil {
 		return nil, err
 	}
-
 	for _, fi := range fis {
 		// skip dir
 		if fi.IsDir() {
 			continue
 		}
-
 		name := fi.Name()
 		if ok, err := filepath.Match(pattern, name); err != nil {
 			return nil, err
@@ -161,13 +156,11 @@ func includeFiles(path string, fileMap map[string]bool) ([]string, error) {
 			if _, exist := fileMap[file]; exist {
 				return nil, ErrDuplicateFile
 			}
-
 			files = append(files, file)
 			// save parse file
 			fileMap[file] = true
 		}
 	}
-
 	return files, nil
 }
 
@@ -178,25 +171,26 @@ func (c *Config) Save(file string) error {
 	if file == "" {
 		file = c.file
 	}
-
 	f, err := os.OpenFile(file, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
-
 	defer f.Close()
 	for k, v := range c.data {
-		if _, err := f.WriteString(fmt.Sprintf("%s = %s%c", k, v, crlf)); err != nil {
+		if _, err := f.WriteString(fmt.Sprintf("%s = %s%c", k, v, CRLF)); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
 // Reload reload the config file and return a new Config.
 func (c *Config) Reload() (*Config, error) {
-	return New(c.file)
+	nc := &Config{Commet: c.Commet, Spliter: c.Spliter}
+	if err := nc.Parse(c.file); err != nil {
+		return nil, err
+	}
+	return nc, nil
 }
 
 // Add add a new key-value configuration.
@@ -295,12 +289,10 @@ func (c *Config) MemSize(key string) (int64, error) {
 			unit = GB
 			subIdx = subIdx - 2
 		}
-
 		b, err := strconv.ParseInt(v[:subIdx], 10, 64)
 		if err != nil {
 			return 0, err
 		}
-
 		return b * unit, nil
 	} else {
 		return 0, ErrNotFoundKey
@@ -337,12 +329,10 @@ func (c *Config) Duration(key string) (int64, error) {
 			unit = Hour
 			subIdx = subIdx - 4
 		}
-
 		b, err := strconv.ParseInt(v[:subIdx], 10, 64)
 		if err != nil {
 			return 0, err
 		}
-
 		return b * unit, nil
 	} else {
 		return 0, ErrNotFoundKey

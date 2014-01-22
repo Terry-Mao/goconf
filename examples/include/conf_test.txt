@@ -3,4 +3,4 @@
 # =ignore lines
 
 # id2
-id2 = 2
+id2 2
