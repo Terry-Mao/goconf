@@ -96,10 +96,14 @@ func TestSection(t *testing.T) {
 			t.Errorf("%s not equals false", key)
 		}
 	}
-}
 
-func TestSave(t *testing.T) {
-}
+	test1.Add("id4", "goconf baby")
+	save := "./examples/conf_reload.txt"
+	if err := conf.Save(save); err != nil {
+		t.Errorf("conf.Save(\"%s\") failed (%s)", save, err.Error())
+	}
 
-func TestReload(t *testing.T) {
+	if _, err := conf.Reload(); err != nil {
+		t.Errorf("conf.Reload() failed (%s)", err.Error())
+	}
 }
