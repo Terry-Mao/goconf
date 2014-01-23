@@ -47,6 +47,9 @@ func main() {
 # configuration examples
 # this is comment, goconf will ignore it.
 
+# this is the section name
+[core]
+
 # a key-value config which key is test and value is 1
 test = 1
 
