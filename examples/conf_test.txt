@@ -2,12 +2,15 @@
 # ignore lines
 # ignore lines
 
+[core]
 # id
 id 1
 
+col goconf
+
 f 1.23
 
-test false
+b yes
 
 buf 1gb
 

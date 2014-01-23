@@ -18,6 +18,8 @@ const (
 	Commet     = "#"
 	Spliter    = " "
 	Include    = "include"
+	SectionS   = "["
+	SectionE   = "]"
 	includeLen = len(Include)
 	// memory unit
 	Byte = int64(1)
@@ -32,16 +34,19 @@ const (
 )
 
 var (
-	ErrNotFoundspliter = errors.New("not found spliter")
-	ErrNotFoundKey     = errors.New("not found the config key")
-	ErrDuplicateFile   = errors.New("duplicate config file parsed")
-	ErrIncludeFile     = errors.New("include file format error")
-	ErrBooleanValue    = errors.New("boolean string error")
+	ErrNoKey   = errors.New("not found the config key")
+	ErrDupFile = errors.New("duplicate config file parsed")
+	ErrFormat  = errors.New("config file format error")
 )
+
+// Section is the key-value data object.
+type Section struct {
+	data map[string]string
+}
 
 // Config is the key-value configuration object.
 type Config struct {
-	data    map[string]string
+	data    map[string]*Section
 	file    string
 	Commet  string
 	Spliter string
@@ -54,7 +59,7 @@ func New() *Config {
 
 // Parse parse the specified config file.
 func (c *Config) Parse(file string) error {
-	c.data = map[string]string{}
+	c.data = map[string]*Section{}
 	c.file = file
 	// open config file
 	f, err := os.Open(file)
@@ -65,6 +70,7 @@ func (c *Config) Parse(file string) error {
 	rd := bufio.NewReader(f)
 	files := []string{file}
 	fileMap := map[string]bool{file: true}
+	section := ""
 	for {
 		line, err := rd.ReadString(CRLF)
 		if err == io.EOF {
@@ -81,6 +87,8 @@ func (c *Config) Parse(file string) error {
 			}
 			defer f.Close()
 			rd = bufio.NewReader(f)
+			// reset section
+			section = ""
 			continue
 		} else if err != nil {
 			return err
@@ -95,6 +103,14 @@ func (c *Config) Parse(file string) error {
 		if strings.HasPrefix(line, c.Commet) {
 			continue
 		}
+		// get secion
+		if strings.HasPrefix(line, SectionS) {
+			if !strings.HasSuffix(line, SectionE) {
+				return ErrFormat
+			}
+			section = line[1 : len(line)-1]
+			continue
+		}
 		// handle include
 		if strings.HasPrefix(line, Include) {
 			if len(line) > includeLen {
@@ -107,13 +123,13 @@ func (c *Config) Parse(file string) error {
 				files = append(files, newFiles...)
 				continue
 			} else {
-				return ErrIncludeFile
+				return ErrFormat
 			}
 		}
 		// get the spliter index
 		idx := strings.Index(line, c.Spliter)
 		if idx <= 0 {
-			return ErrNotFoundspliter
+			return ErrFormat
 		}
 		// get the key and value
 		key := strings.TrimSpace(line[:idx])
@@ -122,7 +138,12 @@ func (c *Config) Parse(file string) error {
 			value = strings.TrimSpace(line[idx+1:])
 		}
 		// store the key-value config
-		c.data[key] = value
+		s, ok := c.data[section]
+		if !ok {
+			s = &Section{data: map[string]string{}}
+			c.data[section] = s
+		}
+		s.data[key] = value
 	}
 	return nil
 }
@@ -154,7 +175,7 @@ func includeFiles(path string, fileMap map[string]bool) ([]string, error) {
 		} else if ok {
 			file := filepath.Join(dirName, name)
 			if _, exist := fileMap[file]; exist {
-				return nil, ErrDuplicateFile
+				return nil, ErrDupFile
 			}
 			files = append(files, file)
 			// save parse file
@@ -164,13 +185,39 @@ func includeFiles(path string, fileMap map[string]bool) ([]string, error) {
 	return files, nil
 }
 
-// Keys return all the config keys slice.
-func (c *Config) Keys() []string {
-    keys := []string{}
-    for k, _ := range c.data {
-        keys = append(keys, k)
-    }
-    return keys
+// Get get a config section by key.
+func (c *Config) Get(section string) *Section {
+	s, ok := c.data[section]
+	if ok {
+		return s
+	} else {
+		return nil
+	}
+}
+
+// Add add a new config section, if exist the section key then return the
+// existing one.
+func (c *Config) Add(section string) *Section {
+	s, ok := c.data[section]
+	if !ok {
+		s = &Section{data: map[string]string{}}
+		c.data[section] = s
+	}
+	return s
+}
+
+// Remove remove the specified section.
+func (c *Config) Remove(section string) {
+	delete(c.data, section)
+}
+
+// Sections return all the config sections.
+func (c *Config) Sections() []string {
+	sections := []string{}
+	for k, _ := range c.data {
+		sections = append(sections, k)
+	}
+	return sections
 }
 
 // Save save current configuration to specified file, if file is "" then rewrite the original file.
@@ -185,9 +232,14 @@ func (c *Config) Save(file string) error {
 		return err
 	}
 	defer f.Close()
-	for k, v := range c.data {
-		if _, err := f.WriteString(fmt.Sprintf("%s = %s%c", k, v, CRLF)); err != nil {
+	for section, data := range c.data {
+		if _, err := f.WriteString(fmt.Sprintf("[%s]%c", section, CRLF)); err != nil {
 			return err
+		}
+		for k, v := range data.data {
+			if _, err := f.WriteString(fmt.Sprintf("%s = %s%c", k, v, CRLF)); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -202,49 +254,49 @@ func (c *Config) Reload() (*Config, error) {
 	return nc, nil
 }
 
-// Add add a new key-value configuration.
-func (c *Config) Add(k, v string) {
-	c.data[k] = v
+// Add add a new key-value configuration for the section.
+func (s *Section) Add(k, v string) {
+	s.data[k] = v
 }
 
-// Remove remove the specified key configuration.
-func (c *Config) Remove(k string) {
-	delete(c.data, k)
+// Remove remove the specified key configuration for the section.
+func (s *Section) Remove(k string) {
+	delete(s.data, k)
 }
 
 // String get config string value.
-func (c *Config) String(key string) (string, error) {
-	if v, ok := c.data[key]; ok {
+func (s *Section) String(key string) (string, error) {
+	if v, ok := s.data[key]; ok {
 		return v, nil
 	} else {
-		return "", ErrNotFoundKey
+		return "", ErrNoKey
 	}
 }
 
 // Int get config int value.
-func (c *Config) Int(key string) (int64, error) {
-	if v, ok := c.data[key]; ok {
+func (s *Section) Int(key string) (int64, error) {
+	if v, ok := s.data[key]; ok {
 		return strconv.ParseInt(v, 10, 64)
 	} else {
-		return 0, ErrNotFoundKey
+		return 0, ErrNoKey
 	}
 }
 
 // Uint get config uint value.
-func (c *Config) Uint(key string) (uint64, error) {
-	if v, ok := c.data[key]; ok {
+func (s *Section) Uint(key string) (uint64, error) {
+	if v, ok := s.data[key]; ok {
 		return strconv.ParseUint(v, 10, 64)
 	} else {
-		return 0, ErrNotFoundKey
+		return 0, ErrNoKey
 	}
 }
 
 // Float get config float value.
-func (c *Config) Float(key string) (float64, error) {
-	if v, ok := c.data[key]; ok {
+func (s *Section) Float(key string) (float64, error) {
+	if v, ok := s.data[key]; ok {
 		return strconv.ParseFloat(v, 64)
 	} else {
-		return 0, ErrNotFoundKey
+		return 0, ErrNoKey
 	}
 }
 
@@ -253,18 +305,20 @@ func (c *Config) Float(key string) (float64, error) {
 // "yes", "1", "y", "true", "enable" means true.
 //
 // "no", "0", "n", "false", "disable" means false.
-func (c *Config) Bool(key string) (bool, error) {
-	if v, ok := c.data[key]; ok {
+//
+// if the specified value unknown then return false.
+func (s *Section) Bool(key string) (bool, error) {
+	if v, ok := s.data[key]; ok {
 		v = strings.ToLower(v)
 		if v == "true" || v == "yes" || v == "1" || v == "y" || v == "enable" {
 			return true, nil
 		} else if v == "false" || v == "no" || v == "0" || v == "n" || v == "disable" {
 			return false, nil
 		} else {
-			return false, ErrBooleanValue
+			return false, nil
 		}
 	} else {
-		return false, ErrNotFoundKey
+		return false, ErrNoKey
 	}
 }
 
@@ -275,8 +329,8 @@ func (c *Config) Bool(key string) (bool, error) {
 // 1mb = 1m = 1024 * 1024.
 //
 // 1gb = 1g = 1024 * 1024 * 1024.
-func (c *Config) MemSize(key string) (int64, error) {
-	if v, ok := c.data[key]; ok {
+func (s *Section) MemSize(key string) (int64, error) {
+	if v, ok := s.data[key]; ok {
 		unit := Byte
 		subIdx := len(v)
 		if strings.HasSuffix(v, "k") {
@@ -304,7 +358,7 @@ func (c *Config) MemSize(key string) (int64, error) {
 		}
 		return b * unit, nil
 	} else {
-		return 0, ErrNotFoundKey
+		return 0, ErrNoKey
 	}
 }
 
@@ -315,8 +369,8 @@ func (c *Config) MemSize(key string) (int64, error) {
 // 1m = 1min = 60.
 //
 // 1h = 1hour = 60 * 60.
-func (c *Config) Duration(key string) (int64, error) {
-	if v, ok := c.data[key]; ok {
+func (s *Section) Duration(key string) (int64, error) {
+	if v, ok := s.data[key]; ok {
 		unit := Nanosecond
 		subIdx := len(v)
 		if strings.HasSuffix(v, "s") {
@@ -344,6 +398,6 @@ func (c *Config) Duration(key string) (int64, error) {
 		}
 		return b * unit, nil
 	} else {
-		return 0, ErrNotFoundKey
+		return 0, ErrNoKey
 	}
 }

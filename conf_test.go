@@ -4,100 +4,102 @@ import (
 	"testing"
 )
 
-func TestConf(t *testing.T) {
+var (
+	conf *Config
+)
+
+func init() {
 	file := "./examples/conf_test.txt"
-	conf := New()
+	conf = New()
 	if err := conf.Parse(file); err != nil {
-		t.Errorf("New(\"%s\") failed (%s)", file, err.Error())
+		panic(err)
+	}
+}
+
+func TestSection(t *testing.T) {
+	section := "core"
+	core := conf.Get(section)
+	if core == nil {
+		t.Errorf("not found section:\"%s\"", section)
+	}
+	section = "test"
+	test := conf.Get(section)
+	if core == nil {
+		t.Errorf("not found section:\"%s\"", section)
+	}
+	section = "test1"
+	test1 := conf.Get(section)
+	if core == nil {
+		t.Errorf("not found section:\"%s\"", section)
+	}
+	key := "id"
+	if id, err := core.Int(key); err != nil {
+		t.Errorf("core.Int(\"%s\") failed (%s)", key, err.Error())
 	} else {
-		key := "id"
-		if id, err := conf.String(key); err != nil {
-			t.Errorf("conf.String(\"%s\") failed (%s)", key, err.Error())
-		} else {
-			if id != "1" {
-				t.Errorf("config key \"%s\" value not equals \"1\"", key)
-			}
-		}
-
-		key = "id2"
-		if id, err := conf.Int(key); err != nil {
-			t.Errorf("conf.Int(\"%s\") failed (%s)", key, err.Error())
-		} else {
-			if id != 2 {
-				t.Errorf("config key \"%s\" value not equals 2", key)
-			}
-		}
-
-		key = "id3"
-		if id, err := conf.String(key); err != nil {
-			t.Errorf("conf.String(\"%s\") failed (%s)", key, err.Error())
-		} else {
-			if id != "yes" {
-				t.Errorf("config key \"%s\" value not equals \"yes\"", key)
-			}
-		}
-
-		key = "f"
-		if f, err := conf.Float(key); err != nil {
-			t.Errorf("conf.String(\"%s\") failed (%s)", key, err.Error())
-		} else {
-			if f != 1.23 {
-				t.Errorf("config key \"%s\" value not equals 1.23", key)
-			}
-		}
-
-		key = "test"
-		if test, err := conf.Bool(key); err != nil {
-			t.Errorf("conf.Bool(\"%s\") failed (%s)", key, err.Error())
-		} else {
-			if test != false {
-				t.Errorf("config key \"%s\" value not equals false", key)
-			}
-		}
-
-		key = "buf"
-		if buf, err := conf.MemSize(key); err != nil {
-			t.Errorf("conf.MemSize(\"%s\") failed (%s)", key, err.Error())
-		} else {
-			if buf != 1*GB {
-				t.Errorf("config key \"%s\" value not equals %d", key, 1*GB)
-			}
-		}
-
-		key = "sleep"
-		if buf, err := conf.Duration(key); err != nil {
-			t.Errorf("conf.Duration(\"%s\") failed (%s)", key, err.Error())
-		} else {
-			if buf != 10*Second {
-				t.Errorf("config key \"%s\" value not equals %d", key, 10*Second)
-			}
-		}
-
-		if len(conf.data) != 7 {
-			t.Errorf("parse config file \"%s\" failed, map length error", file)
-		}
-
-		conf.Add("add", "goconf")
-		if len(conf.data) != 8 {
-			t.Errorf("parse config file \"%s\" failed, map length error", file)
-		}
-
-		key = "add"
-		if add, err := conf.String(key); err != nil {
-			t.Errorf("conf.String(\"%s\") failed (%s)", key, err.Error())
-		} else {
-			if add != "goconf" {
-				t.Errorf("config key \"%s\" value not equals \"goconf\"", key)
-			}
-		}
-
-		conf.Remove("add")
-		if len(conf.data) != 7 {
-			t.Errorf("parse config file \"%s\" failed, map length error", file)
-		}
-
-		if err = conf.Save("./examples/conf_reload.txt"); err != nil {
-			t.Errorf("conf.Save() failed (%s)", err.Error())
+		if id != 1 {
+			t.Errorf("%s not equals 1", key)
 		}
 	}
+	key = "col"
+	if col, err := core.String(key); err != nil {
+		t.Errorf("core.String(\"%s\") failed (%s)", key, err.Error())
+	} else {
+		if col != "goconf" {
+			t.Errorf("%s not equals \"goconf\"", key)
+		}
+	}
+	key = "f"
+	if f, err := core.Float(key); err != nil {
+		t.Errorf("core.Float(\"%s\") failed (%s)", key, err.Error())
+	} else {
+		if f != 1.23 {
+			t.Errorf("%s not equals 1.23", key)
+		}
+	}
+	key = "b"
+	if b, err := core.Bool(key); err != nil {
+		t.Errorf("core.Bool(\"%s\") failed (%s)", key, err.Error())
+	} else {
+		if !b {
+			t.Errorf("%s not equals true", key)
+		}
+	}
+	key = "buf"
+	if buf, err := core.MemSize(key); err != nil {
+		t.Errorf("core.MemSize(\"%s\") failed (%s)", key, err.Error())
+	} else {
+		if buf != 1*1024*1024*1024 {
+			t.Errorf("%s not equals 1*1024*1024*1024", key)
+		}
+	}
+	key = "sleep"
+	if sleep, err := core.Duration(key); err != nil {
+		t.Errorf("core.Duration(\"%s\") failed (%s)", key, err.Error())
+	} else {
+		if sleep != 10*Second {
+			t.Errorf("%s not equals 10*Second", key)
+		}
+	}
+	key = "id2"
+	if id2, err := test.Int(key); err != nil {
+		t.Errorf("test.Int(\"%s\") failed (%s)", key, err.Error())
+	} else {
+		if id2 != 2 {
+			t.Errorf("%s not equals 2", key)
+		}
+	}
+	key = "id3"
+	if id3, err := test1.Bool(key); err != nil {
+		t.Errorf("test.Bool(\"%s\") failed (%s)", key, err.Error())
+	} else {
+		if !id3 {
+			t.Errorf("%s not equals false", key)
+		}
+	}
+}
+
+func TestSave(t *testing.T) {
+}
+
+func TestReload(t *testing.T) {
 }
