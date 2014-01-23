@@ -164,6 +164,15 @@ func includeFiles(path string, fileMap map[string]bool) ([]string, error) {
 	return files, nil
 }
 
+// Keys return all the config keys slice.
+func (c *Config) Keys() []string {
+    keys := []string{}
+    for k, _ := range c.data {
+        keys = append(keys, k)
+    }
+    return keys
+}
+
 // Save save current configuration to specified file, if file is "" then rewrite the original file.
 //
 // This method will ignore all the comment and include instruction if original file has.
