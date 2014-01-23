@@ -401,3 +401,12 @@ func (s *Section) Duration(key string) (int64, error) {
 		return 0, ErrNoKey
 	}
 }
+
+// Keys return all the section keys.
+func (s *Section) Keys() []string {
+    keys := []string{}
+    for k, _ := range s.data {
+        keys = append(keys, k)
+    }
+    return keys
+}
