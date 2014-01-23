@@ -80,6 +80,14 @@ func TestSection(t *testing.T) {
 			t.Errorf("%s not equals 10*Second", key)
 		}
 	}
+    key = "do"
+	if do, err := core.String(key); err != nil {
+		t.Errorf("core.String(\"%s\") failed (%s)", key, err.Error())
+	} else {
+        if do != "hehe" {
+			t.Errorf("%s not equals \"hehe\"", key)
+		}
+	}
 	key = "id2"
 	if id2, err := test.Int(key); err != nil {
 		t.Errorf("test.Int(\"%s\") failed (%s)", key, err.Error())

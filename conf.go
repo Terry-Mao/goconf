@@ -73,7 +73,7 @@ func (c *Config) Parse(file string) error {
 	section := ""
 	for {
 		line, err := rd.ReadString(CRLF)
-		if err == io.EOF {
+		if err == io.EOF && len(line) == 0 {
 			// parse file finish
 			// all files parsed, break
 			if len(files) <= 1 {
