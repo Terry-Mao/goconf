@@ -26,11 +26,6 @@ const (
 	KB   = 1024 * Byte
 	MB   = 1024 * KB
 	GB   = 1024 * MB
-	// time unit
-	Nanosecond = int64(time.Nanosecond)
-	Second     = int64(time.Second)
-	Minute     = int64(time.Minute)
-	Hour       = int64(time.Hour)
 )
 
 var (
@@ -42,7 +37,7 @@ var (
 // Section is the key-value data object.
 type Section struct {
 	data map[string]string
-    Name string
+	Name string
 }
 
 // Config is the key-value configuration object.
@@ -363,41 +358,41 @@ func (s *Section) MemSize(key string) (int64, error) {
 	}
 }
 
-// Second get config second value.
+// Duration get config second value.
 //
 // 1s = 1sec = 1.
 //
 // 1m = 1min = 60.
 //
 // 1h = 1hour = 60 * 60.
-func (s *Section) Duration(key string) (int64, error) {
+func (s *Section) Duration(key string) (time.Duration, error) {
 	if v, ok := s.data[key]; ok {
-		unit := Nanosecond
+		unit := time.Nanosecond
 		subIdx := len(v)
 		if strings.HasSuffix(v, "s") {
-			unit = Second
+			unit = time.Second
 			subIdx = subIdx - 1
 		} else if strings.HasSuffix(v, "sec") {
-			unit = Second
+			unit = time.Second
 			subIdx = subIdx - 3
 		} else if strings.HasSuffix(v, "m") {
-			unit = Minute
+			unit = time.Minute
 			subIdx = subIdx - 1
 		} else if strings.HasSuffix(v, "min") {
-			unit = Minute
+			unit = time.Minute
 			subIdx = subIdx - 3
 		} else if strings.HasSuffix(v, "h") {
-			unit = Hour
+			unit = time.Hour
 			subIdx = subIdx - 1
 		} else if strings.HasSuffix(v, "hour") {
-			unit = Hour
+			unit = time.Hour
 			subIdx = subIdx - 4
 		}
 		b, err := strconv.ParseInt(v[:subIdx], 10, 64)
 		if err != nil {
 			return 0, err
 		}
-		return b * unit, nil
+		return time.Duration(b) * unit, nil
 	} else {
 		return 0, ErrNoKey
 	}
@@ -405,9 +400,9 @@ func (s *Section) Duration(key string) (int64, error) {
 
 // Keys return all the section keys.
 func (s *Section) Keys() []string {
-    keys := []string{}
-    for k, _ := range s.data {
-        keys = append(keys, k)
-    }
-    return keys
+	keys := []string{}
+	for k, _ := range s.data {
+		keys = append(keys, k)
+	}
+	return keys
 }

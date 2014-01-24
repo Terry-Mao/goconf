@@ -2,6 +2,7 @@ package goconf
 
 import (
 	"testing"
+	"time"
 )
 
 var (
@@ -76,15 +77,15 @@ func TestSection(t *testing.T) {
 	if sleep, err := core.Duration(key); err != nil {
 		t.Errorf("core.Duration(\"%s\") failed (%s)", key, err.Error())
 	} else {
-		if sleep != 10*Second {
+		if sleep != 10*time.Second {
 			t.Errorf("%s not equals 10*Second", key)
 		}
 	}
-    key = "do"
+	key = "do"
 	if do, err := core.String(key); err != nil {
 		t.Errorf("core.String(\"%s\") failed (%s)", key, err.Error())
 	} else {
-        if do != "hehe" {
+		if do != "hehe" {
 			t.Errorf("%s not equals \"hehe\"", key)
 		}
 	}
