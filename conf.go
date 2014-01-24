@@ -42,6 +42,7 @@ var (
 // Section is the key-value data object.
 type Section struct {
 	data map[string]string
+    Name string
 }
 
 // Config is the key-value configuration object.
@@ -140,7 +141,7 @@ func (c *Config) Parse(file string) error {
 		// store the key-value config
 		s, ok := c.data[section]
 		if !ok {
-			s = &Section{data: map[string]string{}}
+			s = &Section{data: map[string]string{}, Name: section}
 			c.data[section] = s
 		}
 		s.data[key] = value
@@ -200,7 +201,7 @@ func (c *Config) Get(section string) *Section {
 func (c *Config) Add(section string) *Section {
 	s, ok := c.data[section]
 	if !ok {
-		s = &Section{data: map[string]string{}}
+		s = &Section{data: map[string]string{}, Name: section}
 		c.data[section] = s
 	}
 	return s
