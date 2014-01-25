@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -26,12 +27,6 @@ const (
 	KB   = 1024 * Byte
 	MB   = 1024 * KB
 	GB   = 1024 * MB
-)
-
-var (
-	ErrNoKey   = errors.New("not found the config key")
-	ErrDupFile = errors.New("duplicate config file parsed")
-	ErrFormat  = errors.New("config file format error")
 )
 
 // Section is the key-value data object.
@@ -67,7 +62,10 @@ func (c *Config) Parse(file string) error {
 	files := []string{file}
 	fileMap := map[string]bool{file: true}
 	section := ""
+	filename := file
+	lineNum := 0
 	for {
+		lineNum++
 		line, err := rd.ReadString(CRLF)
 		if err == io.EOF && len(line) == 0 {
 			// parse file finish
@@ -77,16 +75,18 @@ func (c *Config) Parse(file string) error {
 			}
 			// get the next file
 			files = files[1:]
-			f, err = os.Open(files[0])
+			// reset
+			section = ""
+			lineNum = 0
+			filename = files[0]
+			f, err = os.Open(filename)
 			if err != nil {
 				return err
 			}
 			defer f.Close()
 			rd = bufio.NewReader(f)
-			// reset section
-			section = ""
 			continue
-		} else if err != nil {
+		} else if err != nil && err != io.EOF {
 			return err
 		}
 		// trim space
@@ -102,7 +102,7 @@ func (c *Config) Parse(file string) error {
 		// get secion
 		if strings.HasPrefix(line, SectionS) {
 			if !strings.HasSuffix(line, SectionE) {
-				return ErrFormat
+				return errors.New(fmt.Sprintf("no end section: %s in %s:%d", SectionE, filename, lineNum))
 			}
 			section = line[1 : len(line)-1]
 			continue
@@ -119,13 +119,13 @@ func (c *Config) Parse(file string) error {
 				files = append(files, newFiles...)
 				continue
 			} else {
-				return ErrFormat
+				return errors.New(fmt.Sprintf("no include file in %s:%d", filename, lineNum))
 			}
 		}
 		// get the spliter index
 		idx := strings.Index(line, c.Spliter)
 		if idx <= 0 {
-			return ErrFormat
+			return errors.New(fmt.Sprintf("no spliter: %s in %s:%d", strconv.Quote(c.Spliter), filename, lineNum))
 		}
 		// get the key and value
 		key := strings.TrimSpace(line[:idx])
@@ -171,7 +171,7 @@ func includeFiles(path string, fileMap map[string]bool) ([]string, error) {
 		} else if ok {
 			file := filepath.Join(dirName, name)
 			if _, exist := fileMap[file]; exist {
-				return nil, ErrDupFile
+				return nil, errors.New(fmt.Sprintf("include duplicate file: %s", file))
 			}
 			files = append(files, file)
 			// save parse file
@@ -260,12 +260,22 @@ func (s *Section) Remove(k string) {
 	delete(s.data, k)
 }
 
+// An NoKeyError describes a goconf key that was not found in the section.
+type NoKeyError struct {
+	Key     string
+	Section string
+}
+
+func (e *NoKeyError) Error() string {
+	return fmt.Sprintf("key: \"%s\" not found in [%s]", e.Key, e.Section)
+}
+
 // String get config string value.
 func (s *Section) String(key string) (string, error) {
 	if v, ok := s.data[key]; ok {
 		return v, nil
 	} else {
-		return "", ErrNoKey
+		return "", &NoKeyError{Key: key, Section: s.Name}
 	}
 }
 
@@ -274,7 +284,7 @@ func (s *Section) Strings(key, delim string) ([]string, error) {
 	if v, ok := s.data[key]; ok {
 		return strings.Split(v, delim), nil
 	} else {
-		return nil, ErrNoKey
+		return nil, &NoKeyError{Key: key, Section: s.Name}
 	}
 }
 
@@ -283,7 +293,7 @@ func (s *Section) Int(key string) (int64, error) {
 	if v, ok := s.data[key]; ok {
 		return strconv.ParseInt(v, 10, 64)
 	} else {
-		return 0, ErrNoKey
+		return 0, &NoKeyError{Key: key, Section: s.Name}
 	}
 }
 
@@ -292,7 +302,7 @@ func (s *Section) Uint(key string) (uint64, error) {
 	if v, ok := s.data[key]; ok {
 		return strconv.ParseUint(v, 10, 64)
 	} else {
-		return 0, ErrNoKey
+		return 0, &NoKeyError{Key: key, Section: s.Name}
 	}
 }
 
@@ -301,7 +311,7 @@ func (s *Section) Float(key string) (float64, error) {
 	if v, ok := s.data[key]; ok {
 		return strconv.ParseFloat(v, 64)
 	} else {
-		return 0, ErrNoKey
+		return 0, &NoKeyError{Key: key, Section: s.Name}
 	}
 }
 
@@ -315,15 +325,19 @@ func (s *Section) Float(key string) (float64, error) {
 func (s *Section) Bool(key string) (bool, error) {
 	if v, ok := s.data[key]; ok {
 		v = strings.ToLower(v)
-		if v == "true" || v == "yes" || v == "1" || v == "y" || v == "enable" {
-			return true, nil
-		} else if v == "false" || v == "no" || v == "0" || v == "n" || v == "disable" {
-			return false, nil
-		} else {
-			return false, nil
-		}
+		return parseBool(v), nil
 	} else {
-		return false, ErrNoKey
+		return false, &NoKeyError{Key: key, Section: s.Name}
+	}
+}
+
+func parseBool(v string) bool {
+	if v == "true" || v == "yes" || v == "1" || v == "y" || v == "enable" {
+		return true
+	} else if v == "false" || v == "no" || v == "0" || v == "n" || v == "disable" {
+		return false
+	} else {
+		return false
 	}
 }
 
@@ -363,7 +377,7 @@ func (s *Section) MemSize(key string) (int64, error) {
 		}
 		return b * unit, nil
 	} else {
-		return 0, ErrNoKey
+		return 0, &NoKeyError{Key: key, Section: s.Name}
 	}
 }
 
@@ -403,7 +417,7 @@ func (s *Section) Duration(key string) (time.Duration, error) {
 		}
 		return time.Duration(b) * unit, nil
 	} else {
-		return 0, ErrNoKey
+		return 0, &NoKeyError{Key: key, Section: s.Name}
 	}
 }
 
@@ -414,4 +428,155 @@ func (s *Section) Keys() []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// An InvalidUnmarshalError describes an invalid argument passed to Unmarshal.
+// (The argument to Unmarshal must be a non-nil pointer.)
+type InvalidUnmarshalError struct {
+	Type reflect.Type
+}
+
+func (e *InvalidUnmarshalError) Error() string {
+	if e.Type == nil {
+		return "goconf: Unmarshal(nil)"
+	}
+	if e.Type.Kind() != reflect.Ptr {
+		return "goconf: Unmarshal(non-pointer " + e.Type.String() + ")"
+	}
+	return "goconf: Unmarshal(nil " + e.Type.String() + ")"
+}
+
+// An UnmarshalTypeError describes a goconf value that was
+// not appropriate for a value of a specific Go type.
+type UnmarshalTypeError struct {
+	Value string       // description of goconf value - "bool", "array", "number -5"
+	Type  reflect.Type // type of Go value it could not be assigned to
+}
+
+func (e *UnmarshalTypeError) Error() string {
+	return "json: cannot unmarshal " + e.Value + " into Go value of type " + e.Type.String()
+}
+
+func (c *Config) Unmarshall(v interface{}) error {
+	vv := reflect.ValueOf(v)
+	if vv.Kind() != reflect.Ptr || vv.IsNil() {
+		return &InvalidUnmarshalError{reflect.TypeOf(v)}
+	}
+	rv := vv.Elem()
+	rt := rv.Type()
+	n := rv.NumField()
+	// enum every struct field
+	for i := 0; i < n; i++ {
+		vf := rv.Field(i)
+		tf := rt.Field(i)
+		tag := tf.Tag.Get("goconf")
+		// if tag empty or "-" ignore
+		if tag == "-" || tag == "" {
+			continue
+		}
+		tagArr := strings.SplitN(tag, ":", 3)
+		if len(tagArr) < 2 {
+			return errors.New(fmt.Sprintf("error tag: %s, must be section:field:delim(optional)", tag))
+		}
+		section := tagArr[0]
+		key := tagArr[1]
+		s := c.Get(section)
+		if s == nil {
+			// no config section
+			continue
+		}
+		value, ok := s.data[key]
+		if !ok {
+			// no confit key
+			continue
+		}
+		switch vf.Kind() {
+		case reflect.String:
+			vf.SetString(value)
+		case reflect.Bool:
+			vf.SetBool(parseBool(value))
+		case reflect.Float32:
+			if tmp, err := strconv.ParseFloat(value, 32); err != nil {
+				return err
+			} else {
+				vf.SetFloat(tmp)
+			}
+		case reflect.Float64:
+			if tmp, err := strconv.ParseFloat(value, 64); err != nil {
+				return err
+			} else {
+				vf.SetFloat(tmp)
+			}
+		case reflect.Int:
+			if tmp, err := strconv.ParseInt(value, 10, 32); err != nil {
+				return err
+			} else {
+				vf.SetInt(tmp)
+			}
+		case reflect.Int8:
+			if tmp, err := strconv.ParseInt(value, 10, 8); err != nil {
+				return err
+			} else {
+				vf.SetInt(tmp)
+			}
+		case reflect.Int16:
+			if tmp, err := strconv.ParseInt(value, 10, 16); err != nil {
+				return err
+			} else {
+				vf.SetInt(tmp)
+			}
+		case reflect.Int32:
+			if tmp, err := strconv.ParseInt(value, 10, 32); err != nil {
+				return err
+			} else {
+				vf.SetInt(tmp)
+			}
+		case reflect.Int64:
+			if tmp, err := strconv.ParseInt(value, 10, 64); err != nil {
+				return err
+			} else {
+				vf.SetInt(tmp)
+			}
+		case reflect.Uint:
+			if tmp, err := strconv.ParseUint(value, 10, 32); err != nil {
+				return err
+			} else {
+				vf.SetUint(tmp)
+			}
+		case reflect.Uint8:
+			if tmp, err := strconv.ParseUint(value, 10, 8); err != nil {
+				return err
+			} else {
+				vf.SetUint(tmp)
+			}
+		case reflect.Uint16:
+			if tmp, err := strconv.ParseUint(value, 10, 16); err != nil {
+				return err
+			} else {
+				vf.SetUint(tmp)
+			}
+		case reflect.Uint32:
+			if tmp, err := strconv.ParseUint(value, 10, 32); err != nil {
+				return err
+			} else {
+				vf.SetUint(tmp)
+			}
+		case reflect.Uint64:
+			if tmp, err := strconv.ParseUint(value, 10, 64); err != nil {
+				return err
+			} else {
+				vf.SetUint(tmp)
+			}
+		// only support string
+		case reflect.Slice:
+			delim := ","
+			if len(tagArr) == 3 {
+				delim = tagArr[2]
+			}
+			vf.Set(reflect.ValueOf(strings.Split(value, delim)))
+		default:
+			return errors.New(fmt.Sprintf("cannot unmarshall unsuported kind: %s into struct field: %s", vf.Kind().String(), tf.Name))
+		}
+	}
+	return nil
 }

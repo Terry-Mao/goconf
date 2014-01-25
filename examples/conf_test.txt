@@ -16,6 +16,8 @@ buf 1gb
 
 sleep 10s
 
+arr 1,2,3,come on baby
+
 # include files
 include ./examples/include/*.txt
 # include ./examples/include/*.txt

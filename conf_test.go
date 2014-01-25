@@ -17,6 +17,13 @@ func init() {
 	}
 }
 
+type TestConfig struct {
+	ID     int      `goconf:"core:id"`
+	Col    string   `goconf:"core:col"`
+	Ignore int      `goconf:"-"`
+	Arr    []string `goconf:"core:arr:,"`
+}
+
 func TestSection(t *testing.T) {
 	section := "core"
 	core := conf.Get(section)
@@ -105,7 +112,6 @@ func TestSection(t *testing.T) {
 			t.Errorf("%s not equals false", key)
 		}
 	}
-
 	test1.Add("id4", "goconf baby")
 	save := "./examples/conf_reload.txt"
 	if err := conf.Save(save); err != nil {
@@ -114,5 +120,31 @@ func TestSection(t *testing.T) {
 
 	if _, err := conf.Reload(); err != nil {
 		t.Errorf("conf.Reload() failed (%s)", err.Error())
+	}
+	// test unmarshall
+	tf := &TestConfig{}
+	if err := conf.Unmarshall(tf); err != nil {
+		t.Errorf("c.Unmarshall() failed (%s)", err.Error())
+	}
+	if tf.ID != 1 {
+		t.Errorf("TestConfig ID not equals 1")
+	}
+	if tf.Col != "goconf" {
+		t.Errorf("TestConfig Col not equals \"goconf\"")
+	}
+	if len(tf.Arr) != 4 {
+		t.Errorf("TestConfig Arr length not equals 4")
+	}
+	if tf.Arr[0] != "1" {
+		t.Errorf("TestConfig Arr[0] length not equals \"1\"")
+	}
+	if tf.Arr[1] != "2" {
+		t.Errorf("TestConfig Arr[1] length not equals \"2\"")
+	}
+	if tf.Arr[2] != "3" {
+		t.Errorf("TestConfig Arr[2] length not equals \"3\"")
+	}
+	if tf.Arr[3] != "come on baby" {
+		t.Errorf("TestConfig Arr[3] length not equals \"come on baby\"")
 	}
 }
