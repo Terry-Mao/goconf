@@ -125,8 +125,8 @@ func TestSection(t *testing.T) {
 	}
 	// test unmarshall
 	tf := &TestConfig{}
-	if err := conf.Unmarshall(tf); err != nil {
-		t.Errorf("c.Unmarshall() failed (%s)", err.Error())
+	if err := conf.Unmarshal(tf); err != nil {
+		t.Errorf("c.Unmarshal() failed (%s)", err.Error())
 	}
 	if tf.ID != 1 {
 		t.Errorf("TestConfig ID not equals 1")
