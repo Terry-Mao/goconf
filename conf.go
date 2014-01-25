@@ -457,9 +457,9 @@ func (e *UnmarshalTypeError) Error() string {
 	return "json: cannot unmarshal " + e.Value + " into Go value of type " + e.Type.String()
 }
 
-// Unmarshal parses the goconf struct and stores the result in the value 
+// Unmarshal parses the goconf struct and stores the result in the value
 // pointed to by v.
-// 
+//
 // Struct values encode as goconf objects. Each exported struct field
 // becomes a member of the object unless
 //   - the field's tag is "-", or
