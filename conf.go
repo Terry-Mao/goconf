@@ -482,14 +482,14 @@ func (e *InvalidUnmarshalError) Error() string {
 //   // by delimiter ",".
 //   Field []string `goconf:"base:myName:,"`
 //
-//   // Field appears in goconf section "base" as key "myName", the value 
+//   // Field appears in goconf section "base" as key "myName", the value
 //   // conver to time.Duration. When has extra tag "time", then goconf can
 //   // parse such "1h", "1s" config values.
 //   //
-//   // Note the extra tag "time" only effect the int64 (time.Duration is int64) 
+//   // Note the extra tag "time" only effect the int64 (time.Duration is int64)
 //   Field time.Duration `goconf:"base:myName:time"`
 //
-//   // Field appears in goconf section "base" as key "myName", when has extra 
+//   // Field appears in goconf section "base" as key "myName", when has extra
 //   // tag, then goconf can parse like "1gb", "1mb" config values.
 //   //
 //   // Note the extra tag "time" only effect the int (memory size is int).
