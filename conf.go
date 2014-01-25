@@ -446,17 +446,6 @@ func (e *InvalidUnmarshalError) Error() string {
 	return "goconf: Unmarshal(nil " + e.Type.String() + ")"
 }
 
-// An UnmarshalTypeError describes a goconf value that was
-// not appropriate for a value of a specific Go type.
-type UnmarshalTypeError struct {
-	Value string       // description of goconf value - "bool", "array", "number -5"
-	Type  reflect.Type // type of Go value it could not be assigned to
-}
-
-func (e *UnmarshalTypeError) Error() string {
-	return "json: cannot unmarshal " + e.Value + " into Go value of type " + e.Type.String()
-}
-
 // Unmarshal parses the goconf struct and stores the result in the value
 // pointed to by v.
 //
