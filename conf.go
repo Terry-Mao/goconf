@@ -495,7 +495,7 @@ func (e *InvalidUnmarshalError) Error() string {
 //   // Note the extra tag "time" only effect the int (memory size is int).
 //   Field int `goconf:"base:myName:memory"`
 //
-func (c *Config) Unmarshall(v interface{}) error {
+func (c *Config) Unmarshal(v interface{}) error {
 	vv := reflect.ValueOf(v)
 	if vv.Kind() != reflect.Ptr || vv.IsNil() {
 		return &InvalidUnmarshalError{reflect.TypeOf(v)}
