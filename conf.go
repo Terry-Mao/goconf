@@ -274,7 +274,7 @@ func (s *Section) Strings(key, delim string) ([]string, error) {
 	if v, ok := s.data[key]; ok {
 		return strings.Split(v, delim), nil
 	} else {
-		return "", ErrNoKey
+		return nil, ErrNoKey
 	}
 }
 
