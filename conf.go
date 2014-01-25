@@ -269,6 +269,15 @@ func (s *Section) String(key string) (string, error) {
 	}
 }
 
+// Strings get config []string value.
+func (s *Section) Strings(key, delim string) ([]string, error) {
+	if v, ok := s.data[key]; ok {
+		return strings.Split(v, delim), nil
+	} else {
+		return "", ErrNoKey
+	}
+}
+
 // Int get config int value.
 func (s *Section) Int(key string) (int64, error) {
 	if v, ok := s.data[key]; ok {
