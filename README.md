@@ -25,10 +25,12 @@ import (
 )                                                                              
 
 type TestConfig struct {
-    ID     int      `goconf:"core:id"`
-    Col    string   `goconf:"core:col"`
-    Ignore int      `goconf:"-"`
-    Arr    []string `goconf:"core:arr:,"`
+	ID     int           `goconf:"core:id"`
+	Col    string        `goconf:"core:col"`
+	Ignore int           `goconf:"-"`
+	Arr    []string      `goconf:"core:arr:,"`
+	Test   time.Duration `goconf:"core:t_1:time"`
+	Buf    int           `goconf:"core:buf:memory"`
 }
                                                                                
 func main() {                                                                  

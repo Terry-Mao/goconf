@@ -23,7 +23,7 @@ const (
 	SectionE   = "]"
 	includeLen = len(Include)
 	// memory unit
-	Byte = int64(1)
+	Byte = 1
 	KB   = 1024 * Byte
 	MB   = 1024 * KB
 	GB   = 1024 * MB
@@ -348,37 +348,41 @@ func parseBool(v string) bool {
 // 1mb = 1m = 1024 * 1024.
 //
 // 1gb = 1g = 1024 * 1024 * 1024.
-func (s *Section) MemSize(key string) (int64, error) {
+func (s *Section) MemSize(key string) (int, error) {
 	if v, ok := s.data[key]; ok {
-		unit := Byte
-		subIdx := len(v)
-		if strings.HasSuffix(v, "k") {
-			unit = KB
-			subIdx = subIdx - 1
-		} else if strings.HasSuffix(v, "kb") {
-			unit = KB
-			subIdx = subIdx - 2
-		} else if strings.HasSuffix(v, "m") {
-			unit = MB
-			subIdx = subIdx - 1
-		} else if strings.HasSuffix(v, "mb") {
-			unit = MB
-			subIdx = subIdx - 2
-		} else if strings.HasSuffix(v, "g") {
-			unit = GB
-			subIdx = subIdx - 1
-		} else if strings.HasSuffix(v, "gb") {
-			unit = GB
-			subIdx = subIdx - 2
-		}
-		b, err := strconv.ParseInt(v[:subIdx], 10, 64)
-		if err != nil {
-			return 0, err
-		}
-		return b * unit, nil
+		return parseMemory(v)
 	} else {
 		return 0, &NoKeyError{Key: key, Section: s.Name}
 	}
+}
+
+func parseMemory(v string) (int, error) {
+	unit := Byte
+	subIdx := len(v)
+	if strings.HasSuffix(v, "k") {
+		unit = KB
+		subIdx = subIdx - 1
+	} else if strings.HasSuffix(v, "kb") {
+		unit = KB
+		subIdx = subIdx - 2
+	} else if strings.HasSuffix(v, "m") {
+		unit = MB
+		subIdx = subIdx - 1
+	} else if strings.HasSuffix(v, "mb") {
+		unit = MB
+		subIdx = subIdx - 2
+	} else if strings.HasSuffix(v, "g") {
+		unit = GB
+		subIdx = subIdx - 1
+	} else if strings.HasSuffix(v, "gb") {
+		unit = GB
+		subIdx = subIdx - 2
+	}
+	b, err := strconv.ParseInt(v[:subIdx], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return int(b) * unit, nil
 }
 
 // Duration get config second value.
@@ -390,35 +394,43 @@ func (s *Section) MemSize(key string) (int64, error) {
 // 1h = 1hour = 60 * 60.
 func (s *Section) Duration(key string) (time.Duration, error) {
 	if v, ok := s.data[key]; ok {
-		unit := time.Nanosecond
-		subIdx := len(v)
-		if strings.HasSuffix(v, "s") {
-			unit = time.Second
-			subIdx = subIdx - 1
-		} else if strings.HasSuffix(v, "sec") {
-			unit = time.Second
-			subIdx = subIdx - 3
-		} else if strings.HasSuffix(v, "m") {
-			unit = time.Minute
-			subIdx = subIdx - 1
-		} else if strings.HasSuffix(v, "min") {
-			unit = time.Minute
-			subIdx = subIdx - 3
-		} else if strings.HasSuffix(v, "h") {
-			unit = time.Hour
-			subIdx = subIdx - 1
-		} else if strings.HasSuffix(v, "hour") {
-			unit = time.Hour
-			subIdx = subIdx - 4
-		}
-		b, err := strconv.ParseInt(v[:subIdx], 10, 64)
-		if err != nil {
+		if t, err := parseTime(v); err != nil {
 			return 0, err
+		} else {
+			return time.Duration(t), nil
 		}
-		return time.Duration(b) * unit, nil
 	} else {
 		return 0, &NoKeyError{Key: key, Section: s.Name}
 	}
+}
+
+func parseTime(v string) (int64, error) {
+	unit := int64(time.Nanosecond)
+	subIdx := len(v)
+	if strings.HasSuffix(v, "s") {
+		unit = int64(time.Second)
+		subIdx = subIdx - 1
+	} else if strings.HasSuffix(v, "sec") {
+		unit = int64(time.Second)
+		subIdx = subIdx - 3
+	} else if strings.HasSuffix(v, "m") {
+		unit = int64(time.Minute)
+		subIdx = subIdx - 1
+	} else if strings.HasSuffix(v, "min") {
+		unit = int64(time.Minute)
+		subIdx = subIdx - 3
+	} else if strings.HasSuffix(v, "h") {
+		unit = int64(time.Hour)
+		subIdx = subIdx - 1
+	} else if strings.HasSuffix(v, "hour") {
+		unit = int64(time.Hour)
+		subIdx = subIdx - 4
+	}
+	b, err := strconv.ParseInt(v[:subIdx], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return b * unit, nil
 }
 
 // Keys return all the section keys.
@@ -469,6 +481,19 @@ func (e *InvalidUnmarshalError) Error() string {
 //   // Field appears in goconf section "base" as key "myName", the value split
 //   // by delimiter ",".
 //   Field []string `goconf:"base:myName:,"`
+//
+//   // Field appears in goconf section "base" as key "myName", the value 
+//   // conver to time.Duration. When has extra tag "time", then goconf can
+//   // parse such "1h", "1s" config values.
+//   //
+//   // Note the extra tag "time" only effect the int64 (time.Duration is int64) 
+//   Field time.Duration `goconf:"base:myName:time"`
+//
+//   // Field appears in goconf section "base" as key "myName", when has extra 
+//   // tag, then goconf can parse like "1gb", "1mb" config values.
+//   //
+//   // Note the extra tag "time" only effect the int (memory size is int).
+//   Field int `goconf:"base:myName:memory"`
 //
 func (c *Config) Unmarshall(v interface{}) error {
 	vv := reflect.ValueOf(v)
@@ -521,10 +546,24 @@ func (c *Config) Unmarshall(v interface{}) error {
 				vf.SetFloat(tmp)
 			}
 		case reflect.Int:
-			if tmp, err := strconv.ParseInt(value, 10, 32); err != nil {
-				return err
+			if len(tagArr) == 3 {
+				format := tagArr[2]
+				// parse memory size
+				if format == "memory" {
+					if tmp, err := parseMemory(value); err != nil {
+						return err
+					} else {
+						vf.SetInt(int64(tmp))
+					}
+				} else {
+					return errors.New(fmt.Sprintf("unknown tag: %s in struct field: %s (support tags: \"memory\")", format, tf.Name))
+				}
 			} else {
-				vf.SetInt(tmp)
+				if tmp, err := strconv.ParseInt(value, 10, 32); err != nil {
+					return err
+				} else {
+					vf.SetInt(tmp)
+				}
 			}
 		case reflect.Int8:
 			if tmp, err := strconv.ParseInt(value, 10, 8); err != nil {
@@ -545,10 +584,24 @@ func (c *Config) Unmarshall(v interface{}) error {
 				vf.SetInt(tmp)
 			}
 		case reflect.Int64:
-			if tmp, err := strconv.ParseInt(value, 10, 64); err != nil {
-				return err
+			if len(tagArr) == 3 {
+				format := tagArr[2]
+				// parse time
+				if format == "time" {
+					if tmp, err := parseTime(value); err != nil {
+						return err
+					} else {
+						vf.SetInt(tmp)
+					}
+				} else {
+					return errors.New(fmt.Sprintf("unknown tag: %s in struct field: %s (support tags: \"time\")", format, tf.Name))
+				}
 			} else {
-				vf.SetInt(tmp)
+				if tmp, err := strconv.ParseInt(value, 10, 64); err != nil {
+					return err
+				} else {
+					vf.SetInt(tmp)
+				}
 			}
 		case reflect.Uint:
 			if tmp, err := strconv.ParseUint(value, 10, 32); err != nil {

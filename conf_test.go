@@ -18,10 +18,12 @@ func init() {
 }
 
 type TestConfig struct {
-	ID     int      `goconf:"core:id"`
-	Col    string   `goconf:"core:col"`
-	Ignore int      `goconf:"-"`
-	Arr    []string `goconf:"core:arr:,"`
+	ID     int           `goconf:"core:id"`
+	Col    string        `goconf:"core:col"`
+	Ignore int           `goconf:"-"`
+	Arr    []string      `goconf:"core:arr:,"`
+	Test   time.Duration `goconf:"core:t_1:time"`
+	Buf    int           `goconf:"core:buf:memory"`
 }
 
 func TestSection(t *testing.T) {
@@ -146,5 +148,11 @@ func TestSection(t *testing.T) {
 	}
 	if tf.Arr[3] != "come on baby" {
 		t.Errorf("TestConfig Arr[3] length not equals \"come on baby\"")
+	}
+	if tf.Test != 2*time.Hour {
+		t.Errorf("TestConfig t_1 not equals 2 * time.Hour")
+	}
+	if tf.Buf != 1*GB {
+		t.Errorf("TestConfig t_1 not equals 1 * GB")
 	}
 }
