@@ -23,6 +23,13 @@ import (
     "fmt"                                                                      
     "github.com/Terry-Mao/goconf"                                              
 )                                                                              
+
+type TestConfig struct {
+    ID     int      `goconf:"core:id"`
+    Col    string   `goconf:"core:col"`
+    Ignore int      `goconf:"-"`
+    Arr    []string `goconf:"core:arr:,"`
+}
                                                                                
 func main() {                                                                  
     conf := goconf.New()                                                       
@@ -38,6 +45,11 @@ func main() {
         panic(err)                                                             
     }                                                                          
     fmt.Println(id)                                                            
+    tf := &TestConfig{}
+    if err := conf.Unmarshall(tf); err != nil {
+        panic(err)
+    }
+    fmt.Println(tf.ID)
 } 
 ```
 

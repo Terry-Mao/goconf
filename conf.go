@@ -457,6 +457,30 @@ func (e *UnmarshalTypeError) Error() string {
 	return "json: cannot unmarshal " + e.Value + " into Go value of type " + e.Type.String()
 }
 
+// Unmarshal parses the goconf struct and stores the result in the value 
+// pointed to by v.
+// 
+// Struct values encode as goconf objects. Each exported struct field
+// becomes a member of the object unless
+//   - the field's tag is "-", or
+//   - the field is empty and its tag specifies the "omitempty" option.
+// The empty values are false, 0, any
+// nil pointer or interface value, and any array, slice, map, or string of
+// length zero. The object's section and key string is the struct field name
+// but can be specified in the struct field's tag value. The "goconf" key in
+// the struct field's tag value is the key name, followed by an optional comma
+// and options. Examples:
+//
+//   // Field is ignored by this package.
+//   Field int `goconf:"-"`
+//
+//   // Field appears in goconf section "base" as key "myName".
+//   Field int `goconf:"base:myName"`
+//
+//   // Field appears in goconf section "base" as key "myName", the value split
+//   // by delimiter ",".
+//   Field []string `goconf:"base:myName:,"`
+//
 func (c *Config) Unmarshall(v interface{}) error {
 	vv := reflect.ValueOf(v)
 	if vv.Kind() != reflect.Ptr || vv.IsNil() {
@@ -471,7 +495,7 @@ func (c *Config) Unmarshall(v interface{}) error {
 		tf := rt.Field(i)
 		tag := tf.Tag.Get("goconf")
 		// if tag empty or "-" ignore
-		if tag == "-" || tag == "" {
+		if tag == "-" || tag == "" || tag == "omitempty" {
 			continue
 		}
 		tagArr := strings.SplitN(tag, ":", 3)
