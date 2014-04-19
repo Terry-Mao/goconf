@@ -66,16 +66,22 @@ func main() {
 [core]
 
 # a key-value config which key is test and value is 1
-test = 1
+test 1
 
 # one mb
-test1 = 1mb
+test1 1mb
 
 # one second
-test2 = 1s
+test2 1s
 
 # boolean
-test3 = true
+test3 true
+
+# arr
+arr hello,the,world
+
+# map
+m 1=hello,2=the,3=world
 ```
 
 ## Documentation
