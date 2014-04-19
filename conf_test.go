@@ -18,12 +18,14 @@ func init() {
 }
 
 type TestConfig struct {
-	ID     int           `goconf:"core:id"`
-	Col    string        `goconf:"core:col"`
-	Ignore int           `goconf:"-"`
-	Arr    []string      `goconf:"core:arr:,"`
-	Test   time.Duration `goconf:"core:t_1:time"`
-	Buf    int           `goconf:"core:buf:memory"`
+	ID     int            `goconf:"core:id"`
+	Col    string         `goconf:"core:col"`
+	Ignore int            `goconf:"-"`
+	Arr    []string       `goconf:"core:arr:,"`
+	Arr1   []int          `goconf:"core:arr1:,"`
+	Test   time.Duration  `goconf:"core:t_1:time"`
+	Buf    int            `goconf:"core:buf:memory"`
+	M      map[int]string `goconf:"core:map:,"`
 }
 
 func TestSection(t *testing.T) {
@@ -149,10 +151,39 @@ func TestSection(t *testing.T) {
 	if tf.Arr[3] != "come on baby" {
 		t.Errorf("TestConfig Arr[3] length not equals \"come on baby\"")
 	}
+	if len(tf.Arr1) != 3 {
+		t.Errorf("TestConfig Arr length not equals 4")
+	}
+	if tf.Arr1[0] != 1 {
+		t.Errorf("TestConfig Arr1[0] length not equals 1")
+	}
+	if tf.Arr1[1] != 3 {
+		t.Errorf("TestConfig Arr[1] length not equals 3")
+	}
+	if tf.Arr1[2] != 4 {
+		t.Errorf("TestConfig Arr1[2] length not equals 4")
+	}
 	if tf.Test != 2*time.Hour {
 		t.Errorf("TestConfig t_1 not equals 2 * time.Hour")
 	}
 	if tf.Buf != 1*GB {
 		t.Errorf("TestConfig t_1 not equals 1 * GB")
+	}
+	if len(tf.M) != 2 {
+		t.Errorf("TestConfig M length not equals 2")
+	}
+	if v, ok := tf.M[1]; !ok {
+		t.Errorf("TestConfig M no key 1")
+	} else {
+		if v != "str" {
+			t.Errorf("TestConfig M[1] not equals \"str\"")
+		}
+	}
+	if v, ok := tf.M[2]; !ok {
+		t.Errorf("TestConfig M no key 2")
+	} else {
+		if v != "str1" {
+			t.Errorf("TestConfig M[2] not equals \"str1\"")
+		}
 	}
 }

@@ -482,6 +482,10 @@ func (e *InvalidUnmarshalError) Error() string {
 //   // by delimiter ",".
 //   Field []string `goconf:"base:myName:,"`
 //
+//   // Field appears in goconf section "base" as key "myName", the value split
+//   // by delimiter "," and key-value is splited by "=".
+//   Field map[int]string `goconf:"base:myName:,"`
+//
 //   // Field appears in goconf section "base" as key "myName", the value
 //   // conver to time.Duration. When has extra tag "time", then goconf can
 //   // parse such "1h", "1s" config values.
@@ -633,16 +637,134 @@ func (c *Config) Unmarshal(v interface{}) error {
 			} else {
 				vf.SetUint(tmp)
 			}
-		// only support string
 		case reflect.Slice:
 			delim := ","
-			if len(tagArr) == 3 {
+			if len(tagArr) > 2 {
 				delim = tagArr[2]
 			}
-			vf.Set(reflect.ValueOf(strings.Split(value, delim)))
+			strs := strings.Split(value, delim)
+			sli := reflect.MakeSlice(tf.Type, 0, len(strs))
+			for _, str := range strs {
+				vv, err := getValue(tf.Type.Elem().String(), str)
+				if err != nil {
+					return err
+				}
+				sli = reflect.Append(sli, vv)
+			}
+			vf.Set(sli)
+		case reflect.Map:
+			delim := ","
+			if len(tagArr) > 2 {
+				delim = tagArr[2]
+			}
+			strs := strings.Split(value, delim)
+			m := reflect.MakeMap(tf.Type)
+			for _, str := range strs {
+				mapStrs := strings.SplitN(str, "=", 2)
+				if len(mapStrs) < 2 {
+					return errors.New(fmt.Sprintf("error map: %s, must be split by \"=\"", str))
+				}
+				vk, err := getValue(tf.Type.Key().String(), mapStrs[0])
+				if err != nil {
+					return err
+				}
+				vv, err := getValue(tf.Type.Elem().String(), mapStrs[1])
+				if err != nil {
+					return err
+				}
+				m.SetMapIndex(vk, vv)
+			}
+			vf.Set(m)
 		default:
 			return errors.New(fmt.Sprintf("cannot unmarshall unsuported kind: %s into struct field: %s", vf.Kind().String(), tf.Name))
 		}
 	}
 	return nil
+}
+
+// getValue parse String to the type "t" reflect.Value.
+func getValue(t, v string) (reflect.Value, error) {
+	var vv reflect.Value
+	switch t {
+	case "bool":
+		d := parseBool(v)
+		vv = reflect.ValueOf(d)
+	case "int":
+		d, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(int(d))
+	case "int8":
+		d, err := strconv.ParseInt(v, 10, 8)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(int8(d))
+	case "int16":
+		d, err := strconv.ParseInt(v, 10, 16)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(int16(d))
+	case "int32":
+		d, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(int32(d))
+	case "int64":
+		d, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(int64(d))
+	case "uint":
+		d, err := strconv.ParseUint(v, 10, 32)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(uint(d))
+	case "uint8":
+		d, err := strconv.ParseUint(v, 10, 8)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(uint8(d))
+	case "uint16":
+		d, err := strconv.ParseUint(v, 10, 16)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(uint16(d))
+	case "uint32":
+		d, err := strconv.ParseUint(v, 10, 32)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(uint32(d))
+	case "uint64":
+		d, err := strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(uint64(d))
+	case "float32":
+		d, err := strconv.ParseFloat(v, 32)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(float32(d))
+	case "float64":
+		d, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return vv, err
+		}
+		vv = reflect.ValueOf(float64(d))
+	case "string":
+		vv = reflect.ValueOf(v)
+	default:
+		return vv, errors.New(fmt.Sprintf("unkown type: %s", t))
+	}
+	return vv, nil
 }

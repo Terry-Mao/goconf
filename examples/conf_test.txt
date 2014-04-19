@@ -18,7 +18,11 @@ sleep 10s
 
 arr 1,2,3,come on baby
 
+arr1 1,3,4
+
 t_1 2h
+
+map 1=str,2=str1
 
 # include files
 include ./examples/include/*.txt
