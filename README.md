@@ -31,6 +31,7 @@ type TestConfig struct {
 	Arr    []string      `goconf:"core:arr:,"`
 	Test   time.Duration `goconf:"core:t_1:time"`
 	Buf    int           `goconf:"core:buf:memory"`
+    M      map[int]string`goconf:"core:m:,"`
 }
                                                                                
 func main() {                                                                  
