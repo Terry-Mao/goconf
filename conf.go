@@ -407,7 +407,10 @@ func (s *Section) Duration(key string) (time.Duration, error) {
 func parseTime(v string) (int64, error) {
 	unit := int64(time.Nanosecond)
 	subIdx := len(v)
-	if strings.HasSuffix(v, "s") {
+	if strings.HasSuffix(v, "ms") {
+		unit = int64(time.Millisecond)
+		subIdx = subIdx - 2
+	} else if strings.HasSuffix(v, "s") {
 		unit = int64(time.Second)
 		subIdx = subIdx - 1
 	} else if strings.HasSuffix(v, "sec") {
