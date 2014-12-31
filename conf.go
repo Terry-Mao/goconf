@@ -123,15 +123,16 @@ func (c *Config) Parse(file string) error {
 			}
 		}
 		// get the spliter index
-		idx := strings.Index(line, c.Spliter)
-		if idx <= 0 {
-			return errors.New(fmt.Sprintf("no spliter: %s in %s:%d", strconv.Quote(c.Spliter), filename, lineNum))
-		}
-		// get the key and value
-		key := strings.TrimSpace(line[:idx])
+		// xinhuang327: Add support for empty value
+		key := line
 		value := ""
-		if len(line) > idx {
-			value = strings.TrimSpace(line[idx+1:])
+		idx := strings.Index(line, c.Spliter)
+		if idx > 0 {
+			// get the key and value
+			key = strings.TrimSpace(line[:idx])
+			if len(line) > idx {
+				value = strings.TrimSpace(line[idx+1:])
+			}
 		}
 		// store the key-value config
 		s, ok := c.data[section]
@@ -233,7 +234,7 @@ func (c *Config) Save(file string) error {
 			return err
 		}
 		for k, v := range data.data {
-			if _, err := f.WriteString(fmt.Sprintf("%s = %s%c", k, v, CRLF)); err != nil {
+			if _, err := f.WriteString(fmt.Sprintf("%s %s%c", k, v, CRLF)); err != nil {
 				return err
 			}
 		}
