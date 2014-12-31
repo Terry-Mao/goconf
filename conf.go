@@ -234,7 +234,7 @@ func (c *Config) Save(file string) error {
 			return err
 		}
 		for k, v := range data.data {
-			if _, err := f.WriteString(fmt.Sprintf("%s %s%c", k, v, CRLF)); err != nil {
+			if _, err := f.WriteString(fmt.Sprintf("%s%s%s%c", k, c.Spliter, v, CRLF)); err != nil {
 				return err
 			}
 		}
