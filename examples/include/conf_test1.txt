@@ -1,7 +1,0 @@
-# ignore lines
-# ignore lines
-# =ignore lines
-
-[test1]
-# id3
-id3 yes

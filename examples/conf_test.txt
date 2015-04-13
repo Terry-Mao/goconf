@@ -8,7 +8,14 @@ id 1
 
 col goconf
 
+
+# 123123
 f 1.23
+
+
+##
+#
+#
 
 b yes
 
@@ -24,8 +31,12 @@ t_1 2h
 
 map 1=str,2=str1
 
-# include files
-include ./examples/include/*.txt
-# include ./examples/include/*.txt
-
 do hehe
+
+[test]
+id2 2
+
+# heh
+[test1]
+# ok comment
+id3 yes

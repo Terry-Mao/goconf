@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -15,13 +14,11 @@ import (
 
 const (
 	// formatter
-	CRLF       = '\n'
-	Commet     = "#"
-	Spliter    = " "
-	Include    = "include"
-	SectionS   = "["
-	SectionE   = "]"
-	includeLen = len(Include)
+	CRLF     = '\n'
+	Commet   = "#"
+	Spliter  = " "
+	SectionS = "["
+	SectionE = "]"
 	// memory unit
 	Byte = 1
 	KB   = 1024 * Byte
@@ -31,16 +28,20 @@ const (
 
 // Section is the key-value data object.
 type Section struct {
-	data map[string]string
-	Name string
+	data         map[string]string // key:value
+	dataOrder    []string
+	dataComments map[string][]string // key:comments
+	Name         string
+	comments     []string
 }
 
 // Config is the key-value configuration object.
 type Config struct {
-	data    map[string]*Section
-	file    string
-	Commet  string
-	Spliter string
+	data      map[string]*Section
+	dataOrder []string
+	file      string
+	Commet    string
+	Spliter   string
 }
 
 // New return a new default Config object (commet = '#', spliter = ' ').
@@ -50,190 +51,168 @@ func New() *Config {
 
 // Parse parse the specified config file.
 func (c *Config) Parse(file string) error {
-	c.data = map[string]*Section{}
-	c.file = file
 	// open config file
 	f, err := os.Open(file)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	rd := bufio.NewReader(f)
-	files := []string{file}
-	fileMap := map[string]bool{file: true}
-	section := ""
-	filename := file
-	lineNum := 0
+	c.data = map[string]*Section{}
+	c.file = file
+	var (
+		line     int
+		idx      int
+		row      string
+		key      string
+		value    string
+		comments []string
+		section  *Section
+		rd       = bufio.NewReader(f)
+	)
 	for {
-		lineNum++
-		line, err := rd.ReadString(CRLF)
-		if err == io.EOF && len(line) == 0 {
-			// parse file finish
-			// all files parsed, break
-			if len(files) <= 1 {
-				break
-			}
-			// get the next file
-			files = files[1:]
-			// reset
-			section = ""
-			lineNum = 0
-			filename = files[0]
-			f, err = os.Open(filename)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			rd = bufio.NewReader(f)
-			continue
+		line++
+		row, err = rd.ReadString(CRLF)
+		if err == io.EOF && len(row) == 0 {
+			// file end
+			break
 		} else if err != nil && err != io.EOF {
 			return err
 		}
-		// trim space
-		line = strings.TrimSpace(line)
+		row = strings.TrimSpace(row)
 		// ignore blank line
-		if line == "" {
-			continue
-		}
 		// ignore commet line
-		if strings.HasPrefix(line, c.Commet) {
+		if row == "" || strings.HasPrefix(row, c.Commet) {
+			comments = append(comments, row)
 			continue
 		}
 		// get secion
-		if strings.HasPrefix(line, SectionS) {
-			if !strings.HasSuffix(line, SectionE) {
-				return errors.New(fmt.Sprintf("no end section: %s in %s:%d", SectionE, filename, lineNum))
+		if strings.HasPrefix(row, SectionS) {
+			if !strings.HasSuffix(row, SectionE) {
+				return errors.New(fmt.Sprintf("no end section: %s at %s:%d", SectionE, file, line))
 			}
-			section = line[1 : len(line)-1]
+			sectionStr := row[1 : len(row)-1]
+			// store the section
+			s, ok := c.data[sectionStr]
+			if !ok {
+				s = &Section{data: map[string]string{}, dataComments: map[string][]string{}, comments: comments, Name: sectionStr}
+				c.data[sectionStr] = s
+				c.dataOrder = append(c.dataOrder, sectionStr)
+			} else {
+				return errors.New(fmt.Sprintf("section: %s already exists at %s:%d", sectionStr, file, line))
+			}
+			section = s
+			comments = []string{}
 			continue
 		}
-		// handle include
-		if strings.HasPrefix(line, Include) {
-			if len(line) > includeLen {
-				// add other config files
-				newFiles, err := includeFiles(strings.TrimSpace(line[includeLen+1:]), fileMap)
-				if err != nil {
-					return err
-				}
-
-				files = append(files, newFiles...)
-				continue
-			} else {
-				return errors.New(fmt.Sprintf("no include file in %s:%d", filename, lineNum))
-			}
-		}
 		// get the spliter index
-		// xinhuang327: Add support for empty value
-		key := line
-		value := ""
-		idx := strings.Index(line, c.Spliter)
+		idx = strings.Index(row, c.Spliter)
 		if idx > 0 {
 			// get the key and value
-			key = strings.TrimSpace(line[:idx])
-			if len(line) > idx {
-				value = strings.TrimSpace(line[idx+1:])
+			key = strings.TrimSpace(row[:idx])
+			if len(row) > idx {
+				value = strings.TrimSpace(row[idx+1:])
 			}
+		} else {
+			return errors.New(fmt.Sprintf("no spliter in key: %s at %s:%d", row, file, line))
 		}
-		// store the key-value config
-		s, ok := c.data[section]
-		if !ok {
-			s = &Section{data: map[string]string{}, Name: section}
-			c.data[section] = s
+		// check section exists
+		if section == nil {
+			return errors.New(fmt.Sprintf("no section for key: %s at %s:%d", key, file, line))
 		}
-		s.data[key] = value
+		// check key already exists
+		if _, ok := section.data[key]; ok {
+			return errors.New(fmt.Sprintf("section: %s already has key: %s at %s:%d", section.Name, key, file, line))
+		}
+		// save key-value
+		section.data[key] = value
+		// save comments for key
+		section.dataComments[key] = comments
+		section.dataOrder = append(section.dataOrder, key)
+		// clean comments
+		comments = []string{}
 	}
 	return nil
 }
 
-// parse config file include other files
-func includeFiles(path string, fileMap map[string]bool) ([]string, error) {
-	files := []string{}
-	// match pattern
-	pattern := filepath.Base(path)
-	dirName := filepath.Dir(path)
-	// get child files
-	dir, err := os.Open(dirName)
-	if err != nil {
-		return nil, err
-	}
-	defer dir.Close()
-	fis, err := dir.Readdir(-1)
-	if err != nil {
-		return nil, err
-	}
-	for _, fi := range fis {
-		// skip dir
-		if fi.IsDir() {
-			continue
-		}
-		name := fi.Name()
-		if ok, err := filepath.Match(pattern, name); err != nil {
-			return nil, err
-		} else if ok {
-			file := filepath.Join(dirName, name)
-			if _, exist := fileMap[file]; exist {
-				return nil, errors.New(fmt.Sprintf("include duplicate file: %s", file))
-			}
-			files = append(files, file)
-			// save parse file
-			fileMap[file] = true
-		}
-	}
-	return files, nil
-}
-
 // Get get a config section by key.
 func (c *Config) Get(section string) *Section {
-	s, ok := c.data[section]
-	if ok {
-		return s
-	} else {
-		return nil
-	}
+	s, _ := c.data[section]
+	return s
 }
 
-// Add add a new config section, if exist the section key then return the
-// existing one.
+// Add add a new config section, if exist the section key then return the existing one.
 func (c *Config) Add(section string) *Section {
 	s, ok := c.data[section]
 	if !ok {
 		s = &Section{data: map[string]string{}, Name: section}
 		c.data[section] = s
+		c.dataOrder = append(c.dataOrder, section)
 	}
 	return s
 }
 
 // Remove remove the specified section.
 func (c *Config) Remove(section string) {
-	delete(c.data, section)
+	if _, ok := c.data[section]; ok {
+		for i, k := range c.dataOrder {
+			if k == section {
+				c.dataOrder = append(c.dataOrder[:i], c.dataOrder[i+1:]...)
+				break
+			}
+		}
+		delete(c.data, section)
+	}
 }
 
 // Sections return all the config sections.
 func (c *Config) Sections() []string {
+	// safe-copy
 	sections := []string{}
-	for k, _ := range c.data {
+	for _, k := range c.dataOrder {
 		sections = append(sections, k)
 	}
 	return sections
 }
 
 // Save save current configuration to specified file, if file is "" then rewrite the original file.
-//
-// This method will ignore all the comment and include instruction if original file has.
 func (c *Config) Save(file string) error {
 	if file == "" {
 		file = c.file
 	}
+	// save core file
+	return c.saveFile(file)
+}
+
+// saveFile save config info in specified file.
+func (c *Config) saveFile(file string) error {
 	f, err := os.OpenFile(file, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	for section, data := range c.data {
+	// sections
+	for _, section := range c.dataOrder {
+		data, _ := c.data[section]
+		// comments
+		for _, comment := range data.comments {
+			if _, err := f.WriteString(fmt.Sprintf("%s%c", comment, CRLF)); err != nil {
+				return err
+			}
+		}
+		// section
 		if _, err := f.WriteString(fmt.Sprintf("[%s]%c", section, CRLF)); err != nil {
 			return err
 		}
-		for k, v := range data.data {
+		// key-values
+		for _, k := range data.dataOrder {
+			v, _ := data.data[k]
+			// comments
+			for _, comment := range data.dataComments[k] {
+				if _, err := f.WriteString(fmt.Sprintf("%s%c", comment, CRLF)); err != nil {
+					return err
+				}
+			}
+			// key-value
 			if _, err := f.WriteString(fmt.Sprintf("%s%s%s%c", k, c.Spliter, v, CRLF)); err != nil {
 				return err
 			}
@@ -253,12 +232,21 @@ func (c *Config) Reload() (*Config, error) {
 
 // Add add a new key-value configuration for the section.
 func (s *Section) Add(k, v string) {
+	if _, ok := s.data[k]; !ok {
+		s.dataOrder = append(s.dataOrder, k)
+	}
 	s.data[k] = v
 }
 
 // Remove remove the specified key configuration for the section.
 func (s *Section) Remove(k string) {
 	delete(s.data, k)
+	for i, key := range s.dataOrder {
+		if key == k {
+			s.dataOrder = append(s.dataOrder[:i], s.dataOrder[i+1:]...)
+			break
+		}
+	}
 }
 
 // An NoKeyError describes a goconf key that was not found in the section.

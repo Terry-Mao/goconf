@@ -1,7 +1,0 @@
-# ignore lines
-# ignore lines
-# =ignore lines
-
-[test]
-# id2
-id2 2
