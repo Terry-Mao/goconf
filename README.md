@@ -92,4 +92,4 @@ Read the `Terry-Mao/goconf` documentation from a terminal
 $ godoc github.com/Terry-Mao/goconf -http=:6060
 ```
 
-Alternatively, you can [goconf](http://go.pkgdoc.org/github.com/Terry-Mao/goconf) online.
+Alternatively, you can [goconf](http://godoc.org/github.com/Terry-Mao/goconf) online.
