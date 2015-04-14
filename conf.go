@@ -15,7 +15,7 @@ import (
 const (
 	// formatter
 	CRLF     = '\n'
-	Commet   = "#"
+	Comment  = "#"
 	Spliter  = " "
 	SectionS = "["
 	SectionE = "]"
@@ -33,6 +33,7 @@ type Section struct {
 	dataComments map[string][]string // key:comments
 	Name         string
 	comments     []string
+	Comment      string
 }
 
 // Config is the key-value configuration object.
@@ -40,26 +41,19 @@ type Config struct {
 	data      map[string]*Section
 	dataOrder []string
 	file      string
-	Commet    string
+	Comment   string
 	Spliter   string
 }
 
-// New return a new default Config object (commet = '#', spliter = ' ').
+// New return a new default Config object (Comment = '#', spliter = ' ').
 func New() *Config {
-	return &Config{Commet: Commet, Spliter: Spliter}
+	return &Config{Comment: Comment, Spliter: Spliter, data: map[string]*Section{}}
 }
 
-// Parse parse the specified config file.
-func (c *Config) Parse(file string) error {
-	// open config file
-	f, err := os.Open(file)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	c.data = map[string]*Section{}
-	c.file = file
+// ParseReader parse config file by a io.Reader.
+func (c *Config) ParseReader(reader io.Reader) error {
 	var (
+		err      error
 		line     int
 		idx      int
 		row      string
@@ -67,7 +61,7 @@ func (c *Config) Parse(file string) error {
 		value    string
 		comments []string
 		section  *Section
-		rd       = bufio.NewReader(f)
+		rd       = bufio.NewReader(reader)
 	)
 	for {
 		line++
@@ -80,25 +74,25 @@ func (c *Config) Parse(file string) error {
 		}
 		row = strings.TrimSpace(row)
 		// ignore blank line
-		// ignore commet line
-		if row == "" || strings.HasPrefix(row, c.Commet) {
+		// ignore Comment line
+		if len(row) == 0 || strings.HasPrefix(row, c.Comment) {
 			comments = append(comments, row)
 			continue
 		}
 		// get secion
 		if strings.HasPrefix(row, SectionS) {
 			if !strings.HasSuffix(row, SectionE) {
-				return errors.New(fmt.Sprintf("no end section: %s at %s:%d", SectionE, file, line))
+				return errors.New(fmt.Sprintf("no end section: %s at :%d", SectionE, line))
 			}
 			sectionStr := row[1 : len(row)-1]
 			// store the section
 			s, ok := c.data[sectionStr]
 			if !ok {
-				s = &Section{data: map[string]string{}, dataComments: map[string][]string{}, comments: comments, Name: sectionStr}
+				s = &Section{data: map[string]string{}, dataComments: map[string][]string{}, comments: comments, Comment: c.Comment, Name: sectionStr}
 				c.data[sectionStr] = s
 				c.dataOrder = append(c.dataOrder, sectionStr)
 			} else {
-				return errors.New(fmt.Sprintf("section: %s already exists at %s:%d", sectionStr, file, line))
+				return errors.New(fmt.Sprintf("section: %s already exists at %d", sectionStr, line))
 			}
 			section = s
 			comments = []string{}
@@ -113,15 +107,15 @@ func (c *Config) Parse(file string) error {
 				value = strings.TrimSpace(row[idx+1:])
 			}
 		} else {
-			return errors.New(fmt.Sprintf("no spliter in key: %s at %s:%d", row, file, line))
+			return errors.New(fmt.Sprintf("no spliter in key: %s at d", row, line))
 		}
 		// check section exists
 		if section == nil {
-			return errors.New(fmt.Sprintf("no section for key: %s at %s:%d", key, file, line))
+			return errors.New(fmt.Sprintf("no section for key: %s at %d", key, line))
 		}
 		// check key already exists
 		if _, ok := section.data[key]; ok {
-			return errors.New(fmt.Sprintf("section: %s already has key: %s at %s:%d", section.Name, key, file, line))
+			return errors.New(fmt.Sprintf("section: %s already has key: %s at %d", section.Name, key, line))
 		}
 		// save key-value
 		section.data[key] = value
@@ -134,6 +128,18 @@ func (c *Config) Parse(file string) error {
 	return nil
 }
 
+// Parse parse the specified config file.
+func (c *Config) Parse(file string) error {
+	// open config file
+	if f, err := os.Open(file); err != nil {
+		return err
+	} else {
+		defer f.Close()
+		c.file = file
+		return c.ParseReader(f)
+	}
+}
+
 // Get get a config section by key.
 func (c *Config) Get(section string) *Section {
 	s, _ := c.data[section]
@@ -141,10 +147,16 @@ func (c *Config) Get(section string) *Section {
 }
 
 // Add add a new config section, if exist the section key then return the existing one.
-func (c *Config) Add(section string) *Section {
+func (c *Config) Add(section string, comments ...string) *Section {
 	s, ok := c.data[section]
 	if !ok {
-		s = &Section{data: map[string]string{}, Name: section}
+		var dataComments []string
+		for _, comment := range comments {
+			for _, line := range strings.Split(comment, string(CRLF)) {
+				dataComments = append(dataComments, fmt.Sprintf("%s%s", c.Comment, line))
+			}
+		}
+		s = &Section{data: map[string]string{}, Name: section, comments: dataComments, Comment: c.Comment}
 		c.data[section] = s
 		c.dataOrder = append(c.dataOrder, section)
 	}
@@ -178,6 +190,8 @@ func (c *Config) Sections() []string {
 func (c *Config) Save(file string) error {
 	if file == "" {
 		file = c.file
+	} else {
+		c.file = file
 	}
 	// save core file
 	return c.saveFile(file)
@@ -223,7 +237,7 @@ func (c *Config) saveFile(file string) error {
 
 // Reload reload the config file and return a new Config.
 func (c *Config) Reload() (*Config, error) {
-	nc := &Config{Commet: c.Commet, Spliter: c.Spliter}
+	nc := &Config{Comment: c.Comment, Spliter: c.Spliter, file: c.file, data: map[string]*Section{}}
 	if err := nc.Parse(c.file); err != nil {
 		return nil, err
 	}
@@ -231,9 +245,14 @@ func (c *Config) Reload() (*Config, error) {
 }
 
 // Add add a new key-value configuration for the section.
-func (s *Section) Add(k, v string) {
+func (s *Section) Add(k, v string, comments ...string) {
 	if _, ok := s.data[k]; !ok {
 		s.dataOrder = append(s.dataOrder, k)
+		for _, comment := range comments {
+			for _, line := range strings.Split(comment, string(CRLF)) {
+				s.dataComments[k] = append(s.dataComments[k], fmt.Sprintf("%s%s", s.Comment, line))
+			}
+		}
 	}
 	s.data[k] = v
 }

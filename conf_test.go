@@ -137,7 +137,7 @@ func TestSection(t *testing.T) {
 			t.FailNow()
 		}
 	}
-	test1.Add("id4", "goconf baby")
+	test1.Add("id4", "goconf baby", " hahah\n heihei,woshishei")
 	save := "./examples/conf_reload.txt"
 	if err := conf.Save(save); err != nil {
 		t.Errorf("conf.Save(\"%s\") failed (%s)", save, err.Error())

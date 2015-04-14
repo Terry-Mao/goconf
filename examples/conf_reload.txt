@@ -40,4 +40,6 @@ id2 2
 [test1]
 # ok comment
 id3 yes
+# hahah
+# heihei,woshishei
 id4 goconf baby
