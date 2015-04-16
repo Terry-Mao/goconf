@@ -156,7 +156,7 @@ func (c *Config) Add(section string, comments ...string) *Section {
 				dataComments = append(dataComments, fmt.Sprintf("%s%s", c.Comment, line))
 			}
 		}
-		s = &Section{data: map[string]string{}, Name: section, comments: dataComments, Comment: c.Comment}
+		s = &Section{data: map[string]string{}, Name: section, comments: dataComments, Comment: c.Comment, dataComments: map[string][]string{}}
 		c.data[section] = s
 		c.dataOrder = append(c.dataOrder, section)
 	}
