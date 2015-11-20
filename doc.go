@@ -7,6 +7,7 @@ Examples:
     import (
         "fmt"
         "github.com/Terry-Mao/goconf"
+		"time"
     )
 
     type TestConfig struct {
@@ -35,7 +36,7 @@ Examples:
         }
         fmt.Println(id)
         tf := &TestConfig{}
-        if err := conf.Unmarshall(tf); err != nil {
+        if err := conf.Unmarshal(tf); err != nil {
             panic(err)
         }
         fmt.Println(tf.ID)

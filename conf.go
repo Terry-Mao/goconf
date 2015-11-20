@@ -107,7 +107,7 @@ func (c *Config) ParseReader(reader io.Reader) error {
 				value = strings.TrimSpace(row[idx+1:])
 			}
 		} else {
-			return errors.New(fmt.Sprintf("no spliter in key: %s at d", row, line))
+			return errors.New(fmt.Sprintf("no spliter in key: %s at %d", row, line))
 		}
 		// check section exists
 		if section == nil {
