@@ -507,7 +507,7 @@ func (e *InvalidUnmarshalError) Error() string {
 //   // Field appears in goconf section "base" as key "myName", when has extra
 //   // tag, then goconf can parse like "1gb", "1mb" config values.
 //   //
-//   // Note the extra tag "time" only effect the int (memory size is int).
+//   // Note the extra tag "memory" only effect the int (memory size is int).
 //   Field int `goconf:"base:myName:memory"`
 //
 func (c *Config) Unmarshal(v interface{}) error {
